@@ -16,7 +16,7 @@ app.use(helmet());
 app.use(cors());
 app.use(morgan('combined'));
 app.use(express.json());
-app.use(express.urlencoded({ extended: true ));
+app.use(express.urlencoded({ extended: true }));
 
 app.use((req, res, next) => {
   req.requestId = req.headers['x-request-id'] || uuidv4();

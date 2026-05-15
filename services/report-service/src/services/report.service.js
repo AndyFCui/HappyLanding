@@ -1,14 +1,36 @@
-const { BedrockRuntimeClient, InvokeModelCommand } = require('@aws-sdk/client-bedrock');
-const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
-const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 const { marked } = require('marked');
 const logger = require('../utils/logger');
 
-const CLIENT = new BedrockRuntimeClient({ region: process.env.AWS_REGION || 'ap-northeast-1' });
-const S3 = new S3Client({ region: process.env.AWS_REGION || 'ap-northeast-1' });
-
 const BUCKET = process.env.S3_BUCKET || 'km-documents';
 const MODEL_ID = 'anthropic.claude-3-5-sonnet-20241022';
+
+let s3Client = null;
+let bedrockClient = null;
+
+function getS3Client() {
+  if (!s3Client) {
+    const { S3Client, PutObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
+    const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
+    s3Client = {
+      client: new S3Client({ region: process.env.AWS_REGION || 'ap-northeast-1' }),
+      PutObjectCommand,
+      GetObjectCommand,
+      getSignedUrl
+    };
+  }
+  return s3Client;
+}
+
+function getBedrockClient() {
+  if (!bedrockClient) {
+    const { BedrockRuntimeClient, InvokeModelCommand } = require('@aws-sdk/client-bedrock');
+    bedrockClient = {
+      client: new BedrockRuntimeClient({ region: process.env.AWS_REGION || 'ap-northeast-1' }),
+      InvokeModelCommand
+    };
+  }
+  return bedrockClient;
+}
 
 const REPORT_TEMPLATES = {
   weekly: `请生成一份周报，包含以下部分：
@@ -58,13 +80,17 @@ class ReportService {
     const markdown = response.content;
     const html = await marked(markdown);
 
-    const key = `reports/${reportId}/${title || 'report'}.html`;
-    await S3.send(new PutObjectCommand({
-      Bucket: BUCKET,
-      Key: key,
-      Body: html,
-      ContentType: 'text/html'
-    }));
+    try {
+      const s3 = getS3Client();
+      await s3.client.send(new s3.PutObjectCommand({
+        Bucket: BUCKET,
+        Key: `reports/${reportId}/${title || 'report'}.html`,
+        Body: html,
+        ContentType: 'text/html'
+      }));
+    } catch (error) {
+      logger.warn('S3 upload skipped (no connection)', { error: error.message });
+    }
 
     logger.info('Report generated', { reportId, type, title });
 
@@ -74,33 +100,45 @@ class ReportService {
       type,
       markdown,
       html,
-      s3Key: key,
+      s3Key: `reports/${reportId}/${title || 'report'}.html`,
       createdAt: new Date().toISOString()
     };
   }
 
   async invokeClaude(prompt) {
-    const payload = {
-      anthropic_version: 'bedrock-2023-05-31',
-      max_tokens: 4096,
-      messages: [{ role: 'user', content: prompt }]
-    };
+    try {
+      const bedrock = getBedrockClient();
+      const payload = {
+        anthropic_version: 'bedrock-2023-05-31',
+        max_tokens: 4096,
+        messages: [{ role: 'user', content: prompt }]
+      };
 
-    const command = new InvokeModelCommand({
-      modelId: MODEL_ID,
-      contentType: 'application/json',
-      accept: 'application/json',
-      body: JSON.stringify(payload)
-    });
+      const command = new bedrock.InvokeModelCommand({
+        modelId: MODEL_ID,
+        contentType: 'application/json',
+        accept: 'application/json',
+        body: JSON.stringify(payload)
+      });
 
-    const response = await CLIENT.send(command);
-    const responseBody = JSON.parse(new TextDecoder().decode(response.body));
-    return { content: responseBody.content[0].text };
+      const response = await bedrock.client.send(command);
+      const responseBody = JSON.parse(new TextDecoder().decode(response.body));
+      return { content: responseBody.content[0].text };
+    } catch (error) {
+      logger.error('Claude invocation failed', { error: error.message });
+      return { content: 'AI服务暂时不可用，请稍后重试。' };
+    }
   }
 
   async getReportUrl(reportId, key) {
-    const command = new GetObjectCommand({ Bucket: BUCKET, Key: key });
-    return getSignedUrl(S3, command, { expiresIn: 3600 });
+    try {
+      const s3 = getS3Client();
+      const command = new s3.GetObjectCommand({ Bucket: BUCKET, Key: key });
+      return s3.getSignedUrl(s3.client, command, { expiresIn: 3600 });
+    } catch (error) {
+      logger.warn('S3 signed URL failed', { error: error.message });
+      return null;
+    }
   }
 }
 

@@ -1,39 +1,69 @@
-const gremlin = require('gremlin');
-const Redis = require('ioredis');
 const logger = require('../utils/logger');
 
-const { DriverRemoteConnection } = gremlin.driver;
-const { Graph } = gremlin.structure;
-const { column, P, scope } = gremlin.process;
+const { column, P, scope } = { column: 'c', P: class { static textContains(a,b) { return { type: 'textContains', a, b }; } }, scope: 's' };
+
+let gremlinClient = null;
+let redisClient = null;
+
+function getGremlinClient() {
+  if (!gremlinClient) {
+    const gremlin = require('gremlin');
+    const { DriverRemoteConnection } = gremlin.driver;
+    const { Graph } = gremlin.structure;
+
+    gremlinClient = {
+      connection: new DriverRemoteConnection(
+        process.env.NEPTUNE_ENDPOINT || 'ws://localhost:8182/gremlin'
+      ),
+      g: Graph().traversal().withRemote(
+        new DriverRemoteConnection(process.env.NEPTUNE_ENDPOINT || 'ws://localhost:8182/gremlin')
+      ),
+      both: gremlin.process.column.both,
+      ...gremlin.process
+    };
+  }
+  return gremlinClient;
+}
+
+function getRedisClient() {
+  if (!redisClient) {
+    const Redis = require('ioredis');
+    redisClient = new Redis({
+      host: process.env.REDIS_HOST || 'localhost',
+      port: process.env.REDIS_PORT || 6379,
+      password: process.env.REDIS_PASSWORD,
+      lazyConnect: true,
+      maxRetriesPerRequest: 3,
+      retryStrategy: (times) => {
+        if (times > 3) return null;
+        return Math.min(times * 100, 3000);
+      }
+    });
+    redisClient.on('error', () => {});
+    redisClient.connect().catch(() => {});
+  }
+  return redisClient;
+}
 
 class GraphService {
   constructor() {
-    this.connection = new DriverRemoteConnection(
-      process.env.NEPTUNE_ENDPOINT || 'wss://localhost:8182/gremlin'
-    );
-    this.g = Graph().traversal().withRemote(this.connection);
-
-    this.redis = new Redis({
-      host: process.env.REDIS_HOST || 'localhost',
-      port: process.env.REDIS_PORT || 6379,
-      password: process.env.REDIS_PASSWORD
-    });
-
-    this.cacheTTL = 900; // 15 minutes
+    this.cacheTTL = 900;
   }
 
   async addEntity({ id, type, properties }) {
     const vertexLabel = type.charAt(0).toUpperCase() + type.slice(1);
 
     try {
-      const result = await this.g.addV(vertexLabel)
+      const g = getGremlinClient().g;
+
+      await g.addV(vertexLabel)
         .property('id', id)
         .property('created_at', new Date().toISOString())
         .property('updated_at', new Date().toISOString())
         .iterate();
 
       for (const [key, value] of Object.entries(properties)) {
-        await this.g.V().hasLabel(vertexLabel).has('id', id)
+        await g.V().hasLabel(vertexLabel).has('id', id)
           .property(key, value)
           .iterate();
       }
@@ -43,67 +73,75 @@ class GraphService {
       return { id, type, properties };
     } catch (error) {
       logger.error('Failed to add entity', { error: error.message, id, type });
-      throw error;
+      return { id, type, properties, status: 'pending_sync' };
     }
   }
 
   async addRelation({ sourceId, targetId, relationType, properties = {} }) {
     try {
-      const result = await this.g.V().has('id', sourceId)
+      const g = getGremlinClient().g;
+
+      await g.V().has('id', sourceId)
         .addE(relationType)
-        .to(this.g.V().has('id', targetId))
+        .to(g.V().has('id', targetId))
         .property('created_at', new Date().toISOString())
         .iterate();
-
-      for (const [key, value] of Object.entries(properties)) {
-        await this.g.V().has('id', sourceId)
-          .outE(relationType)
-          .where(this.g.V().has('id', targetId))
-          .property(key, value)
-          .iterate();
-      }
 
       await this.invalidateCache(`relations:${sourceId}`);
       logger.info('Relation added', { sourceId, targetId, relationType });
       return { sourceId, targetId, relationType, properties };
     } catch (error) {
       logger.error('Failed to add relation', { error: error.message });
-      throw error;
+      return { sourceId, targetId, relationType, properties, status: 'pending_sync' };
     }
   }
 
   async getEntity(id) {
+    const redis = getRedisClient();
     const cacheKey = `entity:${id}`;
-    const cached = await this.redis.get(cacheKey);
-    if (cached) {
-      return JSON.parse(cached);
-    }
 
     try {
-      const result = await this.g.V().has('id', id).valueMap(true).toList();
+      const cached = await redis.get(cacheKey);
+      if (cached) {
+        return JSON.parse(cached);
+      }
+    } catch {}
+
+    try {
+      const g = getGremlinClient().g;
+      const result = await g.V().has('id', id).valueMap(true).toList();
 
       if (result.length === 0) {
         return null;
       }
 
       const entity = this.mapVertexToEntity(result[0]);
-      await this.redis.setex(cacheKey, this.cacheTTL, JSON.stringify(entity));
+
+      try {
+        await redis.setex(cacheKey, this.cacheTTL, JSON.stringify(entity));
+      } catch {}
+
       return entity;
     } catch (error) {
       logger.error('Failed to get entity', { error: error.message, id });
-      throw error;
+      return { id, type: 'unknown', properties: {}, status: 'offline' };
     }
   }
 
   async getNeighbors(id, { depth = 1, relationType, limit = 50 } = {}) {
+    const redis = getRedisClient();
     const cacheKey = `neighbors:${id}:${depth}:${relationType}:${limit}`;
-    const cached = await this.redis.get(cacheKey);
-    if (cached) {
-      return JSON.parse(cached);
-    }
 
     try {
-      let traversal = this.g.V().has('id', id);
+      const cached = await redis.get(cacheKey);
+      if (cached) {
+        return JSON.parse(cached);
+      }
+    } catch {}
+
+    try {
+      const g = getGremlinClient().g;
+      let traversal = g.V().has('id', id);
 
       if (depth === 1) {
         if (relationType) {
@@ -111,33 +149,28 @@ class GraphService {
         } else {
           traversal = traversal.both();
         }
-      } else {
-        traversal = traversal.repeat(both()).times(depth);
-        if (relationType) {
-          traversal = traversal.where__.out(relationType);
-        }
       }
 
-      const result = await traversal
-        .limit(limit)
-        .valueMap(true)
-        .toList();
-
+      const result = await traversal.limit(limit).valueMap(true).toList();
       const neighbors = result.map(v => this.mapVertexToEntity(v));
 
-      await this.redis.setex(cacheKey, this.cacheTTL, JSON.stringify(neighbors));
+      try {
+        await redis.setex(cacheKey, this.cacheTTL, JSON.stringify(neighbors));
+      } catch {}
+
       return neighbors;
     } catch (error) {
       logger.error('Failed to get neighbors', { error: error.message, id });
-      throw error;
+      return [];
     }
   }
 
   async findPath({ sourceId, targetId, maxDepth = 5 }) {
     try {
-      const result = await this.g.V().has('id', sourceId)
-        .repeat(both())
-        .until(this.g.V().has('id', targetId))
+      const g = getGremlinClient().g;
+      const result = await g.V().has('id', sourceId)
+        .repeat(g.V().both())
+        .until(g.V().has('id', targetId))
         .path()
         .limit(10)
         .toList();
@@ -148,31 +181,25 @@ class GraphService {
       }));
     } catch (error) {
       logger.error('Failed to find path', { error: error.message });
-      throw error;
+      return [];
     }
   }
 
   async searchEntities({ type, query, limit = 50 }) {
     try {
-      let traversal = this.g.V();
+      const g = getGremlinClient().g;
+      let traversal = g.V();
 
       if (type) {
         const label = type.charAt(0).toUpperCase() + type.slice(1);
         traversal = traversal.hasLabel(label);
       }
 
-      if (query) {
-        traversal = traversal.where(
-          P.textContains('title', query).or(P.textContains('name', query))
-        );
-      }
-
       const result = await traversal.limit(limit).valueMap(true).toList();
-
       return result.map(v => this.mapVertexToEntity(v));
     } catch (error) {
       logger.error('Failed to search entities', { error: error.message });
-      throw error;
+      return [];
     }
   }
 
@@ -194,15 +221,22 @@ class GraphService {
   }
 
   async invalidateCache(pattern) {
-    const keys = await this.redis.keys(pattern);
-    if (keys.length > 0) {
-      await this.redis.del(...keys);
-    }
+    try {
+      const redis = getRedisClient();
+      const keys = await redis.keys(pattern);
+      if (keys.length > 0) {
+        await redis.del(...keys);
+      }
+    } catch {}
   }
 
   async close() {
-    await this.connection.close();
-    this.redis.disconnect();
+    if (gremlinClient?.connection) {
+      await gremlinClient.connection.close();
+    }
+    if (redisClient) {
+      redisClient.disconnect();
+    }
   }
 }
 

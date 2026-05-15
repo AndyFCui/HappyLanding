@@ -1,30 +1,63 @@
-const { BedrockRuntimeClient, InvokeModelCommand } = require('@aws-sdk/client-bedrock');
-const { Client } = require('@opensearch-project/opensearch');
-const Redis = require('ioredis');
 const logger = require('../utils/logger');
 
-const BEDROCK = new BedrockRuntimeClient({ region: process.env.AWS_REGION || 'ap-northeast-1' });
 const MODEL_ID = 'anthropic.claude-3-5-sonnet-20241022';
 
-class OnboardingService {
-  constructor() {
-    this.opensearch = new Client({
+let opensearchClient = null;
+let redisClient = null;
+let bedrockClient = null;
+
+function getOpenSearchClient() {
+  if (!opensearchClient) {
+    const { Client } = require('@opensearch-project/opensearch');
+    opensearchClient = new Client({
       node: process.env.OPENSEARCH_ENDPOINT || 'https://localhost:9200'
     });
+  }
+  return opensearchClient;
+}
 
-    this.redis = new Redis({
+function getRedisClient() {
+  if (!redisClient) {
+    const Redis = require('ioredis');
+    redisClient = new Redis({
       host: process.env.REDIS_HOST || 'localhost',
       port: process.env.REDIS_PORT || 6379,
-      password: process.env.REDIS_PASSWORD
+      password: process.env.REDIS_PASSWORD,
+      lazyConnect: true,
+      maxRetriesPerRequest: 3,
+      retryStrategy: (times) => {
+        if (times > 3) return null;
+        return Math.min(times * 100, 3000);
+      }
     });
+    redisClient.on('error', () => {});
+    redisClient.connect().catch(() => {});
   }
+  return redisClient;
+}
 
+function getBedrockClient() {
+  if (!bedrockClient) {
+    const { BedrockRuntimeClient, InvokeModelCommand } = require('@aws-sdk/client-bedrock');
+    bedrockClient = {
+      client: new BedrockRuntimeClient({ region: process.env.AWS_REGION || 'ap-northeast-1' }),
+      InvokeModelCommand
+    };
+  }
+  return bedrockClient;
+}
+
+class OnboardingService {
   async exploreKeyword({ keyword, userId }) {
+    const redis = getRedisClient();
     const cacheKey = `onboarding:${userId}:${keyword}`;
-    const cached = await this.redis.get(cacheKey);
-    if (cached) {
-      return JSON.parse(cached);
-    }
+
+    try {
+      const cached = await redis.get(cacheKey);
+      if (cached) {
+        return JSON.parse(cached);
+      }
+    } catch {}
 
     const relatedDocs = await this.searchRelatedDocs(keyword);
     const explanation = await this.generateExplanation(keyword, relatedDocs);
@@ -37,13 +70,17 @@ class OnboardingService {
       createdAt: new Date().toISOString()
     };
 
-    await this.redis.setex(cacheKey, 3600, JSON.stringify(result));
+    try {
+      await redis.setex(cacheKey, 3600, JSON.stringify(result));
+    } catch {}
+
     return result;
   }
 
   async searchRelatedDocs(keyword) {
     try {
-      const response = await this.opensearch.search({
+      const os = getOpenSearchClient();
+      const response = await os.search({
         index: 'documents,kb_articles',
         body: {
           size: 10,
@@ -64,7 +101,7 @@ class OnboardingService {
         snippet: hit._source.content?.substring(0, 200)
       }));
     } catch (error) {
-      logger.error('Search failed', { error: error.message, keyword });
+      logger.warn('OpenSearch query failed', { error: error.message });
       return [];
     }
   }
@@ -100,11 +137,15 @@ ${docContext}`;
   }
 
   async getSuggestedTopics({ userId, department, role }) {
+    const redis = getRedisClient();
     const cacheKey = `suggested-topics:${userId}`;
-    const cached = await this.redis.get(cacheKey);
-    if (cached) {
-      return JSON.parse(cached);
-    }
+
+    try {
+      const cached = await redis.get(cacheKey);
+      if (cached) {
+        return JSON.parse(cached);
+      }
+    } catch {}
 
     const prompt = `作为一个新员工，请给出5-10个需要了解的关键主题领域。
 员工部门：${department || '未知'}
@@ -127,32 +168,45 @@ ${docContext}`;
       }));
     }
 
-    await this.redis.setex(cacheKey, 86400, JSON.stringify(topics));
+    try {
+      await redis.setex(cacheKey, 86400, JSON.stringify(topics));
+    } catch {}
+
     return topics;
   }
 
   async invokeClaude(prompt) {
-    const payload = {
-      anthropic_version: 'bedrock-2023-05-31',
-      max_tokens: 2048,
-      messages: [{ role: 'user', content: prompt }]
-    };
+    try {
+      const bedrock = getBedrockClient();
+      const payload = {
+        anthropic_version: 'bedrock-2023-05-31',
+        max_tokens: 2048,
+        messages: [{ role: 'user', content: prompt }]
+      };
 
-    const command = new InvokeModelCommand({
-      modelId: MODEL_ID,
-      contentType: 'application/json',
-      accept: 'application/json',
-      body: JSON.stringify(payload)
-    });
+      const command = new bedrock.InvokeModelCommand({
+        modelId: MODEL_ID,
+        contentType: 'application/json',
+        accept: 'application/json',
+        body: JSON.stringify(payload)
+      });
 
-    const response = await BEDROCK.send(command);
-    const responseBody = JSON.parse(new TextDecoder().decode(response.body));
-    return responseBody.content[0].text;
+      const response = await bedrock.client.send(command);
+      const responseBody = JSON.parse(new TextDecoder().decode(response.body));
+      return responseBody.content[0].text;
+    } catch (error) {
+      logger.error('Claude invocation failed', { error: error.message });
+      return 'AI服务暂时不可用，请稍后重试。';
+    }
   }
 
   async close() {
-    await this.opensearch.close();
-    this.redis.disconnect();
+    if (opensearchClient) {
+      await opensearchClient.close();
+    }
+    if (redisClient) {
+      redisClient.disconnect();
+    }
   }
 }
 

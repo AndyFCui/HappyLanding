@@ -1,0 +1,16 @@
+{
+  "name": "@km/monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Knowledge Management System Monorepo",
+  "workspaces": [
+    "services/*",
+    "libs/shared"
+  ],
+  "scripts": {
+    "install:all": "npm install workspaces focus --install",
+    "dev": "npm run -w @km/auth-service dev",
+    "build": "npm run -w @km/shared build",
+    "test": "npm run test --workspaces"
+  }
+}

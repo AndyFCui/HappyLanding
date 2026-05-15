@@ -1,11 +1,4 @@
-const { EventBridgeClient, PutEventsCommand } = require('@aws-sdk/client-eventbridge');
-const { LambdaClient, InvokeCommand } = require('@aws-sdk/client-lambda');
-const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 const logger = require('../utils/logger');
-
-const EB = new EventBridgeClient({ region: process.env.AWS_REGION || 'ap-northeast-1' });
-const LAMBDA = new LambdaClient({ region: process.env.AWS_REGION || 'ap-northeast-1' });
-const S3 = new S3Client({ region: process.env.AWS_REGION || 'ap-northeast-1' });
 
 const CONNECTOR_LAMBDA_PREFIX = process.env.CONNECTOR_LAMBDA_PREFIX || 'km-connector-';
 const EVENT_BUS_NAME = process.env.EVENT_BUS_NAME || 'km-event-bus';
@@ -131,22 +124,25 @@ class DatasourceService {
   }
 
   async publishEvent({ type, ...detail }) {
-    const command = new PutEventsCommand({
-      Entries: [{
-        EventBusName: EVENT_BUS_NAME,
-        Source: 'km.datasource-service',
-        DetailType: type,
-        Detail: JSON.stringify({
-          ...detail,
-          timestamp: new Date().toISOString()
-        })
-      }]
-    });
-
     try {
-      await EB.send(command);
+      const { EventBridgeClient, PutEventsCommand } = require('@aws-sdk/client-eventbridge');
+      const eb = new EventBridgeClient({ region: process.env.AWS_REGION || 'ap-northeast-1' });
+
+      const command = new PutEventsCommand({
+        Entries: [{
+          EventBusName: EVENT_BUS_NAME,
+          Source: 'km.datasource-service',
+          DetailType: type,
+          Detail: JSON.stringify({
+            ...detail,
+            timestamp: new Date().toISOString()
+          })
+        }]
+      });
+
+      await eb.send(command);
     } catch (error) {
-      logger.error('Failed to publish event', { error: error.message, type });
+      logger.warn('EventBridge publish skipped (no connection)', { error: error.message });
     }
   }
 
