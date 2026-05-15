@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: km-system
+  labels:
+    name: km-system
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: km-apps
+  labels:
+    name: km-apps
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: km-data
+  labels:
+    name: km-data

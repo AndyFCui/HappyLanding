@@ -1,0 +1,87 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: auth-service-pdb
+  namespace: km-system
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: auth-service
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: search-service-pdb
+  namespace: km-system
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: search-service
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: graph-service-pdb
+  namespace: km-system
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: graph-service
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: chat-service-pdb
+  namespace: km-system
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: chat-service
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: document-service-pdb
+  namespace: km-system
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: document-service
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: report-service-pdb
+  namespace: km-system
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: report-service
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: onboarding-service-pdb
+  namespace: km-system
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: onboarding-service
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: datasource-service-pdb
+  namespace: km-system
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: datasource-service

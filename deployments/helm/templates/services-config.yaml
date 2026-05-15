@@ -1,0 +1,205 @@
+services:
+  - name: auth-service
+    enabled: true
+    replicaCount: 2
+    image:
+      repository: km-registry/auth-service
+      tag: v1.0.0
+    service:
+      enabled: true
+      port: 80
+      type: ClusterIP
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "250m"
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 10
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 80
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
+    env:
+      AWS_REGION: ap-northeast-1
+      LOG_LEVEL: info
+    serviceAccountName: km-service-account
+
+  - name: search-service
+    enabled: true
+    replicaCount: 2
+    image:
+      repository: km-registry/search-service
+      tag: v1.0.0
+    service:
+      enabled: true
+      port: 80
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "500m"
+      limits:
+        memory: "1Gi"
+        cpu: "1"
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 10
+      targetCPUUtilizationPercentage: 70
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
+    env:
+      OPENSEARCH_ENDPOINT:
+        configMapKeyRef:
+          name: km-config
+          key: OPENSEARCH_ENDPOINT
+      REDIS_HOST:
+        configMapKeyRef:
+          name: km-config
+          key: REDIS_HOST
+
+  - name: graph-service
+    enabled: true
+    replicaCount: 2
+    image:
+      repository: km-registry/graph-service
+      tag: v1.0.0
+    service:
+      enabled: true
+      port: 80
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "500m"
+      limits:
+        memory: "1Gi"
+        cpu: "1"
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 6
+      targetCPUUtilizationPercentage: 65
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
+    env:
+      NEPTUNE_ENDPOINT:
+        secretKeyRef:
+          name: aws-secrets
+          key: neptune-endpoint
+
+  - name: document-service
+    enabled: true
+    replicaCount: 2
+    image:
+      repository: km-registry/document-service
+      tag: v1.0.0
+    service:
+      enabled: true
+      port: 80
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "250m"
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 6
+      targetCPUUtilizationPercentage: 70
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
+
+  - name: chat-service
+    enabled: true
+    replicaCount: 2
+    image:
+      repository: km-registry/chat-service
+      tag: v1.0.0
+    service:
+      enabled: true
+      port: 80
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "500m"
+      limits:
+        memory: "1Gi"
+        cpu: "1"
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 8
+      targetCPUUtilizationPercentage: 65
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
+
+  - name: report-service
+    enabled: true
+    replicaCount: 2
+    image:
+      repository: km-registry/report-service
+      tag: v1.0.0
+    service:
+      enabled: true
+      port: 80
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "500m"
+      limits:
+        memory: "1Gi"
+        cpu: "1"
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
+
+  - name: onboarding-service
+    enabled: true
+    replicaCount: 2
+    image:
+      repository: km-registry/onboarding-service
+      tag: v1.0.0
+    service:
+      enabled: true
+      port: 80
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "500m"
+      limits:
+        memory: "1Gi"
+        cpu: "1"
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
+
+  - name: datasource-service
+    enabled: true
+    replicaCount: 2
+    image:
+      repository: km-registry/datasource-service
+      tag: v1.0.0
+    service:
+      enabled: true
+      port: 80
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "250m"
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1

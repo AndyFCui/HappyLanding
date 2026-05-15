@@ -1,0 +1,23 @@
+{{/* templates/services.yaml */}}
+{{- $root := . -}}
+{{- range $service := .Values.services }}
+{{- if and $service.enabled $service.service.enabled }}
+{{- $serviceName := $service.name }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $serviceName }}
+  namespace: {{ include "km.namespace" $root }}
+  labels:
+    app: {{ $serviceName }}
+spec:
+  selector:
+    app: {{ $serviceName }}
+  ports:
+    - name: http
+      port: {{ $service.service.port | default 80 }}
+      targetPort: 8080
+  type: {{ $service.service.type | default "ClusterIP" }}
+{{- end }}
+{{- end }}

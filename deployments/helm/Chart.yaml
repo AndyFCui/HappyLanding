@@ -1,0 +1,14 @@
+apiVersion: v2
+name: km-system
+description: Knowledge Management System Helm Chart
+type: application
+version: 1.0.0
+appVersion: v1.0.0
+keywords:
+  - knowledge-management
+  - ai
+  - search
+  - aws
+maintainers:
+  - name: KM Team
+    email: team@km.example.com

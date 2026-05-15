@@ -1,0 +1,110 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: backup-documents
+  namespace: km-system
+spec:
+  schedule: "0 2 * * *"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: backup-documents
+        spec:
+          serviceAccountName: km-service-account
+          containers:
+            - name: backup
+              image: amazon/aws-cli:2.15
+              command:
+                - sh
+                - -c
+                - |
+                  aws s3 sync s3://km-documents s3://km-documents-backup/$(date +%Y%m%d)/ --storage-class GLACIER
+                  aws s3 ls s3://km-documents-backup/$(date +%Y%m%d)/
+              env:
+                - name: AWS_REGION
+                  value: ap-northeast-1
+              resources:
+                requests:
+                  memory: "128Mi"
+                  cpu: "100m"
+                limits:
+                  memory: "256Mi"
+                  cpu: "250m"
+          restartPolicy: OnFailure
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: cleanup-old-sessions
+  namespace: km-system
+spec:
+  schedule: "0 3 * * *"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: cleanup-old-sessions
+        spec:
+          serviceAccountName: km-service-account
+          containers:
+            - name: cleanup
+              image: bitnami/kubectl:latest
+              command:
+                - sh
+                - -c
+                - |
+                  echo "Cleaning up old chat sessions..."
+                  # Implementation would interact with DynamoDB to clean old sessions
+              resources:
+                requests:
+                  memory: "64Mi"
+                  cpu: "50m"
+                limits:
+                  memory: "128Mi"
+                  cpu: "100m"
+          restartPolicy: OnFailure
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: sync-datasources
+  namespace: km-system
+spec:
+  schedule: "0 */6 * * *"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: sync-datasources
+        spec:
+          serviceAccountName: km-service-account
+          containers:
+            - name: sync
+              image: amazon/aws-cli:2.15
+              command:
+                - sh
+                - -c
+                - |
+                  echo "Triggering datasource sync..."
+                  # This would trigger Lambda functions via EventBridge
+              env:
+                - name: AWS_REGION
+                  value: ap-northeast-1
+              resources:
+                requests:
+                  memory: "128Mi"
+                  cpu: "100m"
+                limits:
+                  memory: "256Mi"
+                  cpu: "250m"
+          restartPolicy: OnFailure
