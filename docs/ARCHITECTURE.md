@@ -285,22 +285,33 @@ frontend/src/
 
 ## 后端模块
 
+> **注意**：当前为 Mock 实现，所有 `/v1/*` 路由返回模拟数据。真实业务逻辑待实现。
+
 ```
 backend/fastapi/
-├── main.py          # FastAPI 主入口，所有路由
-└── requirements.txt # 依赖
+├── main.py          # FastAPI 主入口，所有路由（Mock）
+├── requirements.txt # 依赖
+└── *_service/      # 8 个 service 目录（空目录，占位符）
+    ├── auth_service/      # 空（待实现用户认证）
+    ├── chat_service/     # 空（待实现 AI 对话）
+    ├── datasource_service/# 空（待实现数据源连接）
+    ├── document_service/ # 空（待实现文档管理）
+    ├── graph_service/    # 空（待实现知识图谱）
+    ├── onboarding_service/# 空（待实现入职流程）
+    ├── report_service/   # 空（待实现报表）
+    └── search_service/   # 空（待实现搜索）
 ```
 
 **API 路由**：
-| 路径 | 方法 | 说明 |
-|------|------|------|
-| `/health` | GET | 健康检查 |
-| `/health/ready` | GET | 就绪检查 |
-| `/v1/search` | POST | 搜索接口 |
-| `/v1/chat/sessions/{id}/messages` | POST | AI 对话 |
-| `/v1/graph/entities` | POST | 创建实体 |
-| `/v1/graph/entities/{id}` | GET | 获取实体 |
-| `/v1/documents` | GET | 文档列表 |
+| 路径 | 方法 | 说明 | 状态 |
+|------|------|------|------|
+| `/health` | GET | 健康检查 | ✅ 完成 |
+| `/health/ready` | GET | 就绪检查 | ✅ 完成 |
+| `/v1/search` | POST | 搜索接口 | ✅ Mock |
+| `/v1/chat/sessions/{id}/messages` | POST | AI 对话 | ✅ Mock |
+| `/v1/graph/entities` | POST | 创建实体 | ✅ Mock |
+| `/v1/graph/entities/{id}` | GET | 获取实体 | ✅ Mock |
+| `/v1/documents` | GET | 文档列表 | ✅ Mock |
 
 ---
 
