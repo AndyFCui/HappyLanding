@@ -1,4 +1,7 @@
 import React, { useState } from 'react'
+import axios from 'axios'
+
+const API_BASE = 'http://localhost:8080'
 
 function Documents() {
   const [documents, setDocuments] = useState([
@@ -23,25 +26,28 @@ function Documents() {
   }
 
   return (
-    <div className="card">
-      <h2>文档管理</h2>
-      <div style={{ marginBottom: '1rem' }}>
-        <button className="btn" onClick={handleUpload} disabled={uploading}>
+    <div className="bg-white rounded-xl shadow-sm p-6">
+      <h2 className="text-xl font-semibold mb-4">文档管理</h2>
+      <div className="mb-4">
+        <button
+          onClick={handleUpload}
+          disabled={uploading}
+          className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:bg-gray-400"
+        >
           {uploading ? '上传中...' : '上传文档'}
         </button>
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+      <div className="space-y-2">
         {documents.map((doc) => (
-          <div key={doc.id} className="service-item">
-            <div>
+          <div key={doc.id} className="border border-gray-200 rounded-lg p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded uppercase">{doc.type}</span>
               <strong>{doc.title}</strong>
-              <span style={{ fontSize: '0.8rem', color: '#666', marginLeft: '1rem' }}>
-                {doc.type.toUpperCase()} | {doc.size} | {doc.date}
-              </span>
+              <span className="text-sm text-gray-500">{doc.size} | {doc.date}</span>
             </div>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button className="btn" style={{ padding: '0.5rem 1rem', fontSize: '0.9rem' }}>下载</button>
-              <button className="btn" style={{ padding: '0.5rem 1rem', fontSize: '0.9rem', background: '#ef4444' }}>删除</button>
+            <div className="flex gap-2">
+              <button className="px-3 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 text-sm">下载</button>
+              <button className="px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 text-sm">删除</button>
             </div>
           </div>
         ))}
