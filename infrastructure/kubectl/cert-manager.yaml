@@ -1,0 +1,69 @@
+# ============================================
+# cert-manager（Let's Encrypt 证书管理）
+# ============================================
+# 作用：自动申请/续期 TLS 证书
+# 部署：CRD + Webhook，Terraform provider 支持差
+# 说明：需先部署 Ingress Controller
+# ============================================
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cert-manager
+  labels:
+    app.kubernetes.io/name: cert-manager
+    app.kubernetes.io/instance: cert-manager
+
+---
+# cert-manager CRD（Helm install 时 --set installCRDs=true 可替代）
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: clusterissuers.cert-manager.io
+spec:
+  group: cert-manager.io
+  names:
+    kind: ClusterIssuer
+    listKind: ClusterIssuerList
+    plural: clusterissuers
+    singular: clusterissuer
+  scope: Cluster
+
+---
+# Issuer（Let's Encrypt 生产环境）
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    # Let's Encrypt 服务器
+    server: https://acme-v02.api.letsencrypt.org/directory
+    # 替换为你的邮箱
+    email: your-email@example.com
+    # ACME 账户私钥存储
+    privateKeySecretRef:
+      name: letsencrypt-prod-account-key
+    # 域名验证方式：HTTP-01（Ingress 自动配置）
+    solvers:
+      - http01:
+          ingress:
+            class: nginx
+            # 使用 ingress-nginx 的 IngressClass
+
+---
+# 测试用 Issuer（如需临时测试）
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-staging
+spec:
+  acme:
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    email: your-email@example.com
+    privateKeySecretRef:
+      name: letsencrypt-staging-account-key
+    solvers:
+      - http01:
+          ingress:
+            class: nginx

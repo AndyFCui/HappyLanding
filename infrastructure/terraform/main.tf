@@ -1,352 +1,810 @@
+# ============================================
+# HappyLanding IaC - Terraform
+# ============================================
+# 用途：声明 AWS 基础设施
+# 支持两种部署模式：
+#   - deployment_mode = "ecs"   → ECS Fargate（简单部署）
+#   - deployment_mode = "eks"   → EKS Kubernetes（完整编排）
+# 顺序：terraform init → terraform plan → terraform apply
+# ============================================
+
 terraform {
   required_version = ">= 1.5.0"
 
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "~> 5.20"
+      version = "~> 5.0"
+    }
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = "~> 2.23"
+    }
+    helm = {
+      source  = "hashicorp/helm"
+      version = "~> 2.12"
     }
   }
 
+  # Terraform State 存储到 S3（需先手动创建 bucket）
   backend "s3" {
-    bucket = "km-terraform-state"
+    bucket = "happylanding-terraform-state"
     key    = "infrastructure/terraform.tfstate"
-    region = "ap-northeast-1"
+    region = "us-east-1"
   }
 }
 
 provider "aws" {
-  region = "ap-northeast-1"
-
-  default_tags {
-    tags = {
-      Project     = "KnowledgeManagement"
-      Environment = "production"
-      ManagedBy   = "Terraform"
-    }
-  }
+  region = var.aws_region
 }
 
-data "aws_caller_identity" "current" {}
+# ============================================
+# 数据源：可用区 + TLS 证书
+# ============================================
 
-locals {
-  account_id = data.aws_caller_identity.current.account_id
-  region     = "ap-northeast-1"
-  vpc_cidr   = "10.0.0.0/16"
-}
+data "aws_availability_zones" "available" {}
 
-module "vpc" {
-  source  = "terraform-aws-modules/vpc/aws"
-  version = "~> 5.0"
+# ============================================
+# ECS Fargate 模式资源（deployment_mode = "ecs"）
+# ============================================
 
-  name = "km-vpc"
-  cidr = local.vpc_cidr
+# ECS VPC（仅 ECS 模式创建）
+resource "aws_vpc" "ecs" {
+  count = var.deployment_mode == "ecs" ? 1 : 0
 
-  azs             = ["${local.region}a", "${local.region}c", "${local.region}d"]
-  private_subnets  = ["10.0.10.0/24", "10.0.11.0/24", "10.0.12.0/24"]
-  public_subnets   = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]
-  database_subnets = ["10.0.20.0/24", "10.0.21.0/24", "10.0.22.0/24"]
-
-  enable_nat_gateway = true
-  single_nat_gateway = false
+  cidr = var.fargate_vpc_cidr
+  enable_dns_hostnames = true
+  enable_dns_support = true
 
   tags = {
-    Name = "km-vpc"
+    Name        = "${var.project}-ecs-vpc"
+    Project     = var.project
+    Environment = var.environment
+    Mode        = "ecs"
   }
 }
 
-module "ecs_cluster" {
-  source  = "terraform-aws-modules/ecs/aws"
-  version = "~> 8.0"
+# ECS 公有子网（ALB 用）
+resource "aws_subnet" "ecs_public_a" {
+  count = var.deployment_mode == "ecs" ? 1 : 0
 
-  cluster_name = "km-cluster"
+  vpc_id                  = aws_vpc.ecs[0].id
+  cidr_block             = var.fargate_public_subnet_a_cidr
+  availability_zone       = data.aws_availability_zones.available.names[0]
+  map_public_ip_on_launch = true
 
-  cluster_configuration = {
-    execute_command_configuration = {
-      log_configuration = {
-        cloud_watch_log_group_name = "/aws/ecs/km-cluster"
-      }
-    }
+  tags = {
+    Name = "${var.project}-ecs-public-a"
+  }
+}
+
+resource "aws_subnet" "ecs_public_b" {
+  count = var.deployment_mode == "ecs" ? 1 : 0
+
+  vpc_id                  = aws_vpc.ecs[0].id
+  cidr_block             = var.fargate_public_subnet_b_cidr
+  availability_zone       = data.aws_availability_zones.available.names[1]
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name = "${var.project}-ecs-public-b"
+  }
+}
+
+# ECS Internet Gateway
+resource "aws_internet_gateway" "ecs" {
+  count = var.deployment_mode == "ecs" ? 1 : 0
+
+  vpc_id = aws_vpc.ecs[0].id
+
+  tags = {
+    Name = "${var.project}-ecs-igw"
+  }
+}
+
+# ECS 路由表
+resource "aws_route_table" "ecs_public" {
+  count = var.deployment_mode == "ecs" ? 1 : 0
+
+  vpc_id = aws_vpc.ecs[0].id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.ecs[0].id
   }
 
-  cluster_settings = [{
+  tags = {
+    Name = "${var.project}-ecs-public-rt"
+  }
+}
+
+resource "aws_route_table_association" "ecs_public_a" {
+  count = var.deployment_mode == "ecs" ? 1 : 0
+
+  subnet_id      = aws_subnet.ecs_public_a[0].id
+  route_table_id = aws_route_table.ecs_public[0].id
+}
+
+resource "aws_route_table_association" "ecs_public_b" {
+  count = var.deployment_mode == "ecs" ? 1 : 0
+
+  subnet_id      = aws_subnet.ecs_public_b[0].id
+  route_table_id = aws_route_table.ecs_public[0].id
+}
+
+# ECS 安全组
+resource "aws_security_group" "ecs_alb" {
+  count = var.deployment_mode == "ecs" ? 1 : 0
+
+  name        = "${var.project}-ecs-alb-sg"
+  description = "ECS ALB 安全组"
+  vpc_id      = aws_vpc.ecs[0].id
+
+  ingress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "${var.project}-ecs-alb-sg"
+  }
+}
+
+resource "aws_security_group" "ecs_tasks" {
+  count = var.deployment_mode == "ecs" ? 1 : 0
+
+  name        = "${var.project}-ecs-tasks-sg"
+  description = "ECS Fargate Task 安全组"
+  vpc_id      = aws_vpc.ecs[0].id
+
+  ingress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    security_groups = [aws_security_group.ecs_alb[0].id]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "${var.project}-ecs-tasks-sg"
+  }
+}
+
+# ECS Cluster
+resource "aws_ecs_cluster" "main" {
+  count = var.deployment_mode == "ecs" ? 1 : 0
+
+  name = var.ecs_cluster_name
+
+  setting {
     name  = "containerInsights"
     value = "enabled"
-  }]
+  }
 
-  cluster_tags = {
-    Project = "KnowledgeManagement"
+  tags = {
+    Name        = var.ecs_cluster_name
+    Project     = var.project
+    Environment = var.environment
   }
 }
 
-module "ecs_services" {
-  source  = "terraform-aws-modules/ecs/aws//modules/ecs-service"
-  version = "~> 8.0"
+# ECS Task Execution IAM Role
+resource "aws_iam_role" "ecs_task_execution" {
+  count = var.deployment_mode == "ecs" ? 1 : 0
 
-  for_each = toset(["auth-service", "search-service", "graph-service", "document-service", "chat-service"])
+  name = "${var.project}-ecs-task-execution"
 
-  cluster_name  = module.ecs_cluster.cluster_name
-  service_name  = each.value
-  desired_count = 2
-  task_definition_arn = module.ecs_tasks[each.value].task_definition_arn
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = { Service = "ecs-tasks.amazonaws.com" }
+    }]
+  })
+}
 
-  deployment_maximum_percent         = 200
-  deployment_minimum_healthy_percent = 100
+resource "aws_iam_role_policy_attachment" "ecs_task_execution" {
+  count = var.deployment_mode == "ecs" ? 1 : 0
 
-  subnets = module.vpc.private_subnets
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+  role       = aws_iam_role.ecs_task_execution[0].name
+}
 
-  load_balancer = {
-    target_group_arn = module.alb.target_groups[each.value].arn
-    container_name   = each.value
+# ECS ALB
+resource "aws_lb" "ecs" {
+  count = var.deployment_mode == "ecs" ? 1 : 0
+
+  name               = "${var.project}-ecs-alb"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.ecs_alb[0].id]
+  subnets           = [aws_subnet.ecs_public_a[0].id, aws_subnet.ecs_public_b[0].id]
+
+  enable_deletion_protection = false
+
+  tags = {
+    Name = "${var.project}-ecs-alb"
+  }
+}
+
+# ECS Target Group（Frontend）
+resource "aws_lb_target_group" "frontend" {
+  count = var.deployment_mode == "ecs" ? 1 : 0
+
+  name     = "${var.project}-frontend-tg"
+  port     = 3000
+  protocol = "HTTP"
+  vpc_id   = aws_vpc.ecs[0].id
+
+  health_check {
+    enabled             = true
+    healthy_threshold   = 2
+    interval            = 30
+    matcher             = "200"
+    path                = "/"
+    port                = "traffic-port"
+    protocol            = "HTTP"
+    timeout             = 5
+    unhealthy_threshold = 2
+  }
+}
+
+# ECS Target Group（Backend）
+resource "aws_lb_target_group" "backend" {
+  count = var.deployment_mode == "ecs" ? 1 : 0
+
+  name     = "${var.project}-backend-tg"
+  port     = 8080
+  protocol = "HTTP"
+  vpc_id   = aws_vpc.ecs[0].id
+
+  health_check {
+    enabled             = true
+    healthy_threshold   = 2
+    interval            = 30
+    matcher             = "200"
+    path                = "/health"
+    port                = "traffic-port"
+    protocol            = "HTTP"
+    timeout             = 5
+    unhealthy_threshold = 2
+  }
+}
+
+# ECS ALB Listener
+resource "aws_lb_listener" "ecs" {
+  count = var.deployment_mode == "ecs" ? 1 : 0
+
+  load_balancer_arn = aws_lb.ecs[0].arn
+  port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    target_group_arn = aws_lb_target_group.frontend[0].arn
+    type             = "forward"
+  }
+}
+
+# ECS Service - Frontend
+resource "aws_ecs_service" "frontend" {
+  count = var.deployment_mode == "ecs" ? 1 : 0
+
+  name            = "${var.project}-frontend"
+  cluster         = aws_ecs_cluster.main[0].id
+  task_definition = aws_ecs_task_definition.frontend[0].arn
+  desired_count   = 2
+  launch_type     = "FARGATE"
+
+  network_configuration {
+    subnets          = [aws_subnet.ecs_public_a[0].id, aws_subnet.ecs_public_b[0].id]
+    security_groups  = [aws_security_group.ecs_tasks[0].id]
+    assign_public_ip = true
+  }
+
+  load_balancer {
+    target_group_arn = aws_lb_target_group.frontend[0].arn
+    container_name   = "frontend"
+    container_port   = 3000
+  }
+
+  depends_on = [aws_lb_listener.ecs]
+
+  tags = {
+    Name = "${var.project}-frontend"
+  }
+}
+
+# ECS Task Definition - Frontend
+resource "aws_ecs_task_definition" "frontend" {
+  count = var.deployment_mode == "ecs" ? 1 : 0
+
+  family                   = "${var.project}-frontend"
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  cpu                      = "256"
+  memory                   = "512"
+
+  execution_role_arn = aws_iam_role.ecs_task_execution[0].arn
+
+  container_definitions = jsonencode([{
+    name      = "frontend"
+    image     = "<ECR_REGISTRY>/happylanding-frontend:latest"
+    essential = true
+    portMappings = [{
+      containerPort = 3000
+      protocol      = "tcp"
+    }]
+    healthCheck = {
+      command     = ["CMD-SHELL", "curl -f http://localhost:3000/ || exit 1"]
+      interval    = 30
+      timeout     = 5
+      retries     = 3
+    }
+  }])
+
+  tags = {
+    Name = "${var.project}-frontend-td"
+  }
+}
+
+# ECS Task Definition - Backend
+resource "aws_ecs_task_definition" "backend" {
+  count = var.deployment_mode == "ecs" ? 1 : 0
+
+  family                   = "${var.project}-backend"
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  cpu                      = "512"
+  memory                   = "1024"
+
+  execution_role_arn = aws_iam_role.ecs_task_execution[0].arn
+
+  container_definitions = jsonencode([{
+    name      = "backend"
+    image     = "<ECR_REGISTRY>/happylanding-backend:latest"
+    essential = true
+    portMappings = [{
+      containerPort = 8080
+      protocol      = "tcp"
+    }]
+    environment = [
+      { name = "ENVIRONMENT", value = "production" },
+      { name = "LOG_LEVEL", value = "info" }
+    ]
+    healthCheck = {
+      command     = ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+      interval    = 30
+      timeout     = 5
+      retries     = 3
+    }
+  }])
+
+  tags = {
+    Name = "${var.project}-backend-td"
+  }
+}
+
+# ECS Service - Backend
+resource "aws_ecs_service" "backend" {
+  count = var.deployment_mode == "ecs" ? 1 : 0
+
+  name            = "${var.project}-backend"
+  cluster         = aws_ecs_cluster.main[0].id
+  task_definition = aws_ecs_task_definition.backend[0].arn
+  desired_count   = 2
+  launch_type     = "FARGATE"
+
+  network_configuration {
+    subnets          = [aws_subnet.ecs_public_a[0].id, aws_subnet.ecs_public_b[0].id]
+    security_groups  = [aws_security_group.ecs_tasks[0].id]
+    assign_public_ip = true
+  }
+
+  load_balancer {
+    target_group_arn = aws_lb_target_group.backend[0].arn
+    container_name   = "backend"
     container_port   = 8080
   }
 
-  security_group_rules = {
-    alb = {
-      type                     = "ingress"
-      source_security_group_id = module.alb.security_group_id
-      ports = [{
-        from_port = 8080
-        to_port   = 8080
-        protocol  = "tcp"
-      }]
-    }
+  depends_on = [aws_lb_listener.ecs]
+
+  tags = {
+    Name = "${var.project}-backend"
   }
 }
 
-module "albs" {
-  source  = "terraform-aws-modules/alb/aws"
-  version = "~> 9.0"
+# ============================================
+# EKS 模式资源（deployment_mode = "eks"）
+# ============================================
 
-  name = "km-alb"
+# EKS VPC
+resource "aws_vpc" "eks" {
+  count = var.deployment_mode == "eks" ? 1 : 0
 
-  vpc_id     = module.vpc.vpc_id
-  subnets    = module.vpc.public_subnets
-  security_groups = [module.alb_security_group.security_group_id]
+  cidr = var.vpc_cidr
+  enable_dns_hostnames = true
+  enable_dns_support = true
 
-  target_groups = {
-    for service in ["auth-service", "search-service", "graph-service", "document-service", "chat-service"] : service => {
-      name     = "${service}-tg"
-      protocol = "HTTP"
-      port     = 80
-      health_check = {
-        enabled             = true
-        healthy_threshold   = 2
-        interval            = 30
-        matcher             = "200"
-        path                = "/health"
-        port                = "traffic-port"
-        protocol            = "HTTP"
-        timeout             = 5
-        unhealthy_threshold = 2
-      }
-    }
-  }
-
-  listeners = {
-    http = {
-      port     = 80
-      protocol = "HTTP"
-      forward = {
-        target_group_key = "auth-service"
-      }
-    }
+  tags = {
+    Name        = "${var.project}-eks-vpc"
+    Project     = var.project
+    Environment = var.environment
+    Mode        = "eks"
   }
 }
 
-module "rds" {
-  source  = "terraform-aws-modules/rds/aws"
-  version = "~> 6.0"
+# EKS 公有子网
+resource "aws_subnet" "eks_public_a" {
+  count = var.deployment_mode == "eks" ? 1 : 0
 
-  identifier = "km-postgres"
+  vpc_id                  = aws_vpc.eks[0].id
+  cidr_block             = var.public_subnet_a_cidr
+  availability_zone       = data.aws_availability_zones.available.names[0]
+  map_public_ip_on_launch = true
 
-  engine               = "postgres"
-  engine_version        = "15.4"
-  family               = "postgres15"
-  major_engine_version = "15"
-  instance_class       = "db.r6g.large"
-
-  allocated_storage     = 100
-  max_allocated_storage = 500
-  storage_encrypted     = true
-
-  db_name  = "kmdb"
-  username = "kmadmin"
-  password = random_password.rds_password.result
-
-  multi_az               = true
-  db_subnet_group_name    = module.vpc.database_subnet_group
-  vpc_security_group_ids  = [module.rds_security_group.security_group_id]
-
-  backup_retention_period = 14
-  backup_window          = "03:00-04:00"
-  maintenance_window     = "mon:04:00-mon:05:00"
-
-  enabled_cloudwatch_logs_exports = ["postgresql", "upgrade"]
-}
-
-module "opensearch" {
-  source  = "terraform-aws-modules/opensearch/aws"
-  version = "~> 2.0"
-
-  domain_name = "km-opensearch"
-
-  engine_version = "OpenSearch_2.11"
-
-  cluster_config = {
-    instance_type            = "r6g.large.search"
-    instance_count          = 3
-    dedicated_master_enabled = true
-    dedicated_master_type   = "r6g.large.search"
-    dedicated_master_count = 3
-    warm_enabled           = true
-    warm_type              = "ultrawarm1.large.search"
-    warm_count             = 2
-  }
-
-  vpc_options = {
-    security_group_ids = [module.opensearch_security_group.security_group_id]
-    subnet_ids         = [module.vpc.private_subnets[0], module.vpc.private_subnets[1]]
-  }
-
-  encrypt_at_rest_options = {
-    enabled = true
-  }
-
-  domain_endpoint_options = {
-    enforce HTTPS = true
-    tls_security_policy = "Policy-Min-TLS-1-2-2019-07"
-  }
-
-  advanced_options = {
-    "rest.action.multi.allow_explicit_index" = "true"
+  tags = {
+    Name = "${var.project}-eks-public-a"
+    "kubernetes.io/role/elb" = "1"
   }
 }
 
-module "redis" {
-  source  = "terraform-aws-modules/elasticache/aws"
-  version = "~> 3.0"
+resource "aws_subnet" "eks_public_b" {
+  count = var.deployment_mode == "eks" ? 1 : 0
 
-  identifier = "km-redis"
+  vpc_id                  = aws_vpc.eks[0].id
+  cidr_block             = var.public_subnet_b_cidr
+  availability_zone       = data.aws_availability_zones.available.names[1]
+  map_public_ip_on_launch = true
 
-  cluster_mode_replicas_per_node_group = 1
-  number_of_node_groups                = 2
-  node_type                            = "cache.r6g.large"
-
-  engine              = "redis"
-  engine_version      = "7.1"
-  port                = 6379
-
-  at_rest_encryption  = true
-  transit_encryption  = true
-  auth_token_enabled  = true
-
-  security_group_ids  = [module.redis_security_group.security_group_id]
-  subnet_group_name   = aws_elasticache_subnet_group.km_redis.name
+  tags = {
+    Name = "${var.project}-eks-public-b"
+    "kubernetes.io/role/elb" = "1"
+  }
 }
 
-resource "random_password" "rds_password" {
-  length  = 32
-  special = true
+# EKS 私有子网
+resource "aws_subnet" "eks_private_a" {
+  count = var.deployment_mode == "eks" ? 1 : 0
+
+  vpc_id                  = aws_vpc.eks[0].id
+  cidr_block             = var.private_subnet_a_cidr
+  availability_zone       = data.aws_availability_zones.available.names[0]
+
+  tags = {
+    Name = "${var.project}-eks-private-a"
+    "kubernetes.io/role/internal-elb" = "1"
+  }
 }
 
-resource "aws_elasticache_subnet_group" "km_redis" {
-  name       = "km-redis-subnet-group"
-  subnet_ids = module.vpc.private_subnets
+resource "aws_subnet" "eks_private_b" {
+  count = var.deployment_mode == "eks" ? 1 : 0
+
+  vpc_id                  = aws_vpc.eks[0].id
+  cidr_block             = var.private_subnet_b_cidr
+  availability_zone       = data.aws_availability_zones.available.names[1]
+
+  tags = {
+    Name = "${var.project}-eks-private-b"
+    "kubernetes.io/role/internal-elb" = "1"
+  }
 }
 
-resource "random_string" "cognito_pool_suffix" {
-  length  = 6
-  special = false
-  upper   = false
+# EKS Internet Gateway
+resource "aws_internet_gateway" "eks" {
+  count = var.deployment_mode == "eks" ? 1 : 0
+
+  vpc_id = aws_vpc.eks[0].id
+
+  tags = {
+    Name = "${var.project}-eks-igw"
+  }
 }
 
-resource "aws_cognito_user_pool" "km_users" {
-  name = "km-user-pool-${random_string.cognito_pool_suffix.result}"
+# EKS NAT Gateway
+resource "aws_eip" "eks_nat" {
+  count = var.deployment_mode == "eks" ? 1 : 0
 
-  username_attributes    = ["email"]
-  alias_attributes      = ["email"]
+  domain = "vpc"
+}
 
-  password_policy {
-    minimum_length    = 8
-    require_lowercase = true
-    require_numbers   = true
-    require_symbols   = true
-    require_uppercase = true
+resource "aws_nat_gateway" "eks" {
+  count = var.deployment_mode == "eks" ? 1 : 0
+
+  allocation_id = aws_eip.eks_nat[0].id
+  subnet_id     = aws_subnet.eks_public_a[0].id
+
+  tags = {
+    Name = "${var.project}-eks-nat"
+  }
+}
+
+# EKS 路由表
+resource "aws_route_table" "eks_public" {
+  count = var.deployment_mode == "eks" ? 1 : 0
+
+  vpc_id = aws_vpc.eks[0].id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.eks[0].id
   }
 
-  user_attribute_update_settings {
-    attributes_require_verification_before_update = ["email"]
+  tags = {
+    Name = "${var.project}-eks-public-rt"
+  }
+}
+
+resource "aws_route_table" "eks_private" {
+  count = var.deployment_mode == "eks" ? 1 : 0
+
+  vpc_id = aws_vpc.eks[0].id
+
+  route {
+    cidr_block     = "0.0.0.0/0"
+    nat_gateway_id = aws_nat_gateway.eks[0].id
   }
 
-  verification_message_template {
-    default_email_option = "CONFIRM_WITH_CODE"
+  tags = {
+    Name = "${var.project}-eks-private-rt"
+  }
+}
+
+# EKS 子网关联路由表
+resource "aws_route_table_association" "eks_public_a" {
+  count = var.deployment_mode == "eks" ? 1 : 0
+
+  subnet_id      = aws_subnet.eks_public_a[0].id
+  route_table_id = aws_route_table.eks_public[0].id
+}
+
+resource "aws_route_table_association" "eks_public_b" {
+  count = var.deployment_mode == "eks" ? 1 : 0
+
+  subnet_id      = aws_subnet.eks_public_b[0].id
+  route_table_id = aws_route_table.eks_public[0].id
+}
+
+resource "aws_route_table_association" "eks_private_a" {
+  count = var.deployment_mode == "eks" ? 1 : 0
+
+  subnet_id      = aws_subnet.eks_private_a[0].id
+  route_table_id = aws_route_table.eks_private[0].id
+}
+
+resource "aws_route_table_association" "eks_private_b" {
+  count = var.deployment_mode == "eks" ? 1 : 0
+
+  subnet_id      = aws_subnet.eks_private_b[0].id
+  route_table_id = aws_route_table.eks_private[0].id
+}
+
+# EKS 安全组
+resource "aws_security_group" "eks_workers" {
+  count = var.deployment_mode == "eks" ? 1 : 0
+
+  name        = "${var.project}-eks-workers-sg"
+  description = "EKS 节点安全组"
+  vpc_id      = aws_vpc.eks[0].id
+
+  ingress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
-  admin_create_user_config {
-    allow_admin_create_user_only = false
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
-  schema = [
-    {
-      name         = "email"
-      attribute_data_type    = "String"
-      required       = true
-      mutable       = true
-    },
-    {
-      name         = "given_name"
-      attribute_data_type    = "String"
-      required       = false
-      mutable       = true
-    },
-    {
-      name         = "family_name"
-      attribute_data_type    = "String"
-      required       = false
-      mutable       = true
-    }
+  tags = {
+    Name = "${var.project}-eks-workers-sg"
+  }
+}
+
+# EKS Cluster
+resource "aws_eks_cluster" "main" {
+  count = var.deployment_mode == "eks" ? 1 : 0
+
+  name     = var.cluster_name
+  role_arn = aws_iam_role.eks_cluster[0].arn
+  version  = var.kubernetes_version
+
+  vpc_config {
+    subnet_ids = [
+      aws_subnet.eks_public_a[0].id,
+      aws_subnet.eks_public_b[0].id,
+      aws_subnet.eks_private_a[0].id,
+      aws_subnet.eks_private_b[0].id
+    ]
+    endpoint_private_access = true
+    endpoint_public_access  = true
+    public_access_cidrs     = ["0.0.0.0/0"]
+  }
+
+  depends_on = [
+    aws_iam_role_policy_attachment.eks_cluster_policy[0],
+    aws_iam_role_policy_attachment.eks_vpc_resource_controller[0]
   ]
 
   tags = {
-    Project = "KnowledgeManagement"
+    Name        = var.cluster_name
+    Project     = var.project
+    Environment = var.environment
   }
 }
 
-resource "aws_cognito_user_pool_client" "km_app_client" {
-  name         = "km-app-client"
-  user_pool_id = aws_cognito_user_pool.km_users.id
+# EKS Cluster IAM Role
+resource "aws_iam_role" "eks_cluster" {
+  count = var.deployment_mode == "eks" ? 1 : 0
 
-  generate_secret     = false
-  allowed_oauth_flows_user_pool_client = true
-  allowed_oauth_flows = ["implicit", "code"]
-  allowed_oauth_scopes = ["openid", "profile", "email"]
-  callback_urls       = ["https://km.example.com/callback"]
-  logout_urls        = ["https://km.example.com/logout"]
+  name = "${var.project}-eks-cluster"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = { Service = "eks.amazonaws.com" }
+    }]
+  })
 }
 
-resource "aws_s3_bucket" "km_documents" {
-  bucket = "km-documents-${local.account_id}"
+resource "aws_iam_role_policy_attachment" "eks_cluster_policy" {
+  count = var.deployment_mode == "eks" ? 1 : 0
+
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
+  role       = aws_iam_role.eks_cluster[0].name
+}
+
+resource "aws_iam_role_policy_attachment" "eks_vpc_resource_controller" {
+  count = var.deployment_mode == "eks" ? 1 : 0
+
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSVPCResourceController"
+  role       = aws_iam_role.eks_cluster[0].name
+}
+
+# EKS Node Group
+resource "aws_eks_node_group" "main" {
+  count = var.deployment_mode == "eks" ? 1 : 0
+
+  cluster_name    = aws_eks_cluster.main[0].name
+  node_group_name = "${var.project}-nodes"
+  node_role_arn   = aws_iam_role.eks_nodes[0].arn
+  subnet_ids      = [aws_subnet.eks_private_a[0].id, aws_subnet.eks_private_b[0].id]
+
+  scaling_config {
+    desired_size = var.node_desired_size
+    max_size     = var.node_max_size
+    min_size     = var.node_min_size
+  }
+
+  instance_types = var.node_instance_types
+
+  depends_on = [
+    aws_iam_role_policy_attachment.workers_eks[0]
+  ]
 
   tags = {
-    Project = "KnowledgeManagement"
+    Name = "${var.project}-node-group"
   }
 }
 
-resource "aws_s3_bucket_versioning" "km_documents" {
-  bucket = aws_s3_bucket.km_documents.id
+# EKS Node IAM Role
+resource "aws_iam_role" "eks_nodes" {
+  count = var.deployment_mode == "eks" ? 1 : 0
 
-  versioning_configuration {
-    status = "Enabled"
-  }
+  name = "${var.project}-eks-nodes"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = { Service = "ec2.amazonaws.com" }
+    }]
+  })
 }
 
-resource "aws_s3_bucket_server_side_encryption_configuration" "km_documents" {
-  bucket = aws_s3_bucket.km_documents.id
+resource "aws_iam_role_policy_attachment" "workers_eks" {
+  count = var.deployment_mode == "eks" ? 1 : 0
 
-  rule {
-    apply_server_side_encryption_by_default {
-      sse_algorithm = "AES256"
-    }
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+  role       = aws_iam_role.eks_nodes[0].name
+}
+
+resource "aws_iam_role_policy_attachment" "workers_cni" {
+  count = var.deployment_mode == "eks" ? 1 : 0
+
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
+  role       = aws_iam_role.eks_nodes[0].name
+}
+
+resource "aws_iam_role_policy_attachment" "workers_ecr_read" {
+  count = var.deployment_mode == "eks" ? 1 : 0
+
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+  role       = aws_iam_role.eks_nodes[0].name
+}
+
+# EBS CSI Driver IAM
+resource "aws_iam_role" "ebs_csi" {
+  count = var.deployment_mode == "eks" ? 1 : 0
+
+  name = "${var.project}-ebs-csi"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = { Service = "pods.eks.amazonaws.com" }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ebs_csi" {
+  count = var.deployment_mode == "eks" ? 1 : 0
+
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
+  role       = aws_iam_role.ebs_csi[0].name
+}
+
+# EKS OIDC Provider（Helm/IRSA 用）
+resource "aws_iam_openid_connect_provider" "eks" {
+  count = var.deployment_mode == "eks" ? 1 : 0
+
+  url = aws_eks_cluster.main[0].identity[0].oidc[0].issuer
+
+  client_id_list = ["sts.amazonaws.com"]
+
+  thumbprint_list = [data.tls_certificate.eks[0].certificates[0].sha1_fingerprint]
+}
+
+# TLS Certificate Data Source for EKS OIDC
+data "tls_certificate" "eks" {
+  count = var.deployment_mode == "eks" ? 1 : 0
+
+  url = aws_eks_cluster.main[0].identity[0].oidc[0].issuer
+}
+
+# ============================================
+# 共享资源（两种模式都创建）
+# ============================================
+
+# ECR 镜像仓库（两种模式都需要）
+resource "aws_ecr_repository" "frontend" {
+  name = "${var.project}-frontend"
+}
+
+resource "aws_ecr_repository" "backend" {
+  name = "${var.project}-backend"
+}
+
+# Route53 域名（可选）
+resource "aws_route53_zone" "main" {
+  name = var.domain_name
+
+  tags = {
+    Name = "${var.project}-zone"
   }
 }

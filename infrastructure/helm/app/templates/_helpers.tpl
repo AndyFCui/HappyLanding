@@ -1,13 +1,33 @@
-{{/*
-Expand the name of the chart.
-*/}}
+# ============================================
+# HappyLanding App Helm Chart
+# ============================================
+# 用途：部署 Frontend (React) + Backend (FastAPI) 到 EKS
+# 模板：deployment.yaml / service.yaml / ingress.yaml / _helpers.tpl
+# ============================================
+
+apiVersion: v2
+name: happylanding
+description: HappyLanding Knowledge Management Platform
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - knowledge-management
+  - search
+  - ai
+  - graph
+maintainers:
+  - name: HappyLanding Team
+
+---
+# ============================================
+# Helpers（模板工具函数）
+# ============================================
+
 {{- define "happylanding.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
-{{/*
-Create a default fully qualified app name.
-*/}}
 {{- define "happylanding.fullname" -}}
 {{- if .Values.fullnameOverride }}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
@@ -21,16 +41,10 @@ Create a default fully qualified app name.
 {{- end }}
 {{- end }}
 
-{{/*
-Create chart name and version as used by the chart label.
-*/}}
 {{- define "happylanding.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
-{{/*
-Common labels
-*/}}
 {{- define "happylanding.labels" -}}
 helm.sh/chart: {{ include "happylanding.chart" . }}
 {{ include "happylanding.selectorLabels" . }}
@@ -40,9 +54,6 @@ app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
-{{/*
-Selector labels
-*/}}
 {{- define "happylanding.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "happylanding.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}

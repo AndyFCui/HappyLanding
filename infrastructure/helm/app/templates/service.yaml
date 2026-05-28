@@ -1,3 +1,11 @@
+# ============================================
+# Frontend + Backend Service
+# ============================================
+# 类型：ClusterIP（K8s 内部访问）
+# Ingress 负责外部路由，不需要 NodePort
+# ============================================
+
+---
 apiVersion: v1
 kind: Service
 metadata:
@@ -15,6 +23,7 @@ spec:
   selector:
     {{- include "happylanding.selectorLabels" . | nindent 4 }}
     app: frontend
+
 ---
 apiVersion: v1
 kind: Service

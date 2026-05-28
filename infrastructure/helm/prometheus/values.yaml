@@ -1,24 +1,36 @@
-# Prometheus Community Helm Chart
-# kube-prometheus-stack: Industry Standard for EKS Monitoring
+# ============================================
+# Prometheus Helm Values (kube-prometheus-stack)
+# ============================================
+# 用途：监控配置（Prometheus + Grafana + Alertmanager）
+# 组件：
+#   - prometheus-server: 指标采集与存储（15d retention，100GiB gp3）
+#   - alertmanager: 告警路由（Email/Slack）
+#   - grafana: 可视化仪表盘
+#   - kube-state-metrics: K8s 对象状态
+#   - node-exporter: 节点级指标
+# ============================================
 
+# Prometheus 配置
 prometheus:
   prometheusSpec:
+    # 数据保留期（15天）
     retention: 15d
     retentionSize: 50GiB
+    # 副本标签（多副本时避免冲突）
     replicaExternalLabel: false
     prometheusExternalLabel: false
 
-    # Pod monitoring via ServiceMonitor
+    # ServiceMonitor 自动发现
     serviceMonitorSelector:
       matchLabels:
         release: prometheus
 
-    # Rule monitoring via PrometheusRule
+    # PrometheusRule 自动发现
     ruleSelector:
       matchLabels:
         release: prometheus
 
-    # Enable alerting
+    # Alertmanager 配置
     alerting:
       alertmanagers:
         - namespace: monitoring
@@ -26,27 +38,28 @@ prometheus:
           port: web
           scheme: http
 
-  # Persistent storage for Prometheus
-  storageSpec:
-    volumeClaimTemplate:
-      spec:
-        storageClassName: gp3
-        resources:
-          requests:
-            storage: 100Gi
+    # 持久化存储（gp3 SSD）
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: gp3
+          resources:
+            requests:
+              storage: 100Gi
 
-  # Resource limits
-  resources:
-    limits:
-      cpu: 1000m
-      memory: 2Gi
-    requests:
-      cpu: 500m
-      memory: 1Gi
+    # 资源配置
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+      requests:
+        cpu: 500m
+        memory: 1Gi
 
+# Alertmanager 配置
 alertmanager:
   alertmanagerSpec:
-    # Persistent storage for Alertmanager
+    # 持久化存储
     storage:
       volumeClaimTemplate:
         spec:
@@ -55,10 +68,11 @@ alertmanager:
             requests:
               storage: 10Gi
 
-  # Alertmanager config
+  # 告警路由配置
   config:
     global:
       resolve_timeout: 5m
+      # SMTP 配置（替换为你的邮箱服务）
       smtp_smarthost: 'smtp.example.com:587'
       smtp_from: 'alertmanager@happylanding.com'
       smtp_auth_username: 'alertmanager'
@@ -80,10 +94,12 @@ alertmanager:
           receiver: 'warning-alerts'
 
     receivers:
+      # 默认接收器（团队邮箱）
       - name: 'default'
         email_configs:
           - to: 'team@happylanding.com'
             send_resolved: true
+      # Critical 告警（oncall + Slack）
       - name: 'critical-alerts'
         email_configs:
           - to: 'oncall@happylanding.com'
@@ -92,17 +108,19 @@ alertmanager:
           - api_url: '<REPLACE_WITH_SLACK_WEBHOOK>'
             channel: '#critical-alerts'
             send_resolved: true
+      # Warning 告警（Slack）
       - name: 'warning-alerts'
         slack_configs:
           - api_url: '<REPLACE_WITH_SLACK_WEBHOOK>'
             channel: '#warnings'
             send_resolved: true
 
+# Grafana 配置
 grafana:
-  # Grafana admin password (use secret in production)
+  # 管理员密码（生产环境用 Secret）
   adminPassword: 'prom-operator'
 
-  # Additional data sources
+  # 数据源
   datasources:
     prometheus:
       type: prometheus
@@ -110,7 +128,7 @@ grafana:
       url: http://prometheus-server.monitoring.svc:9090
       isDefault: true
 
-  # Dashboard providers
+  # 仪表盘 providers
   dashboardProviders:
     dashboardproviders.yaml:
       apiVersion: 1
@@ -121,27 +139,30 @@ grafana:
           options:
             path: /var/lib/grafana/dashboards/default
 
-  # Pre-configured dashboards
+  # 预置仪表盘（通过 Grafana.com ID 导入）
   dashboards:
     default:
+      # Kubernetes Cluster Monitoring (ID: 7249)
       kubernetes-cluster:
         gnetId: 7249
         revision: 2
         datasource: Prometheus
+      # Kubernetes Pods (ID: 737)
       kubernetes-pods:
         gnetId: 737
         revision: 2
         datasource: Prometheus
+      # API Server Metrics (ID: 15760)
       api-server:
         gnetId: 15760
         revision: 2
         datasource: Prometheus
 
-  # Grafana service type
+  # Service 类型
   service:
     type: ClusterIP
 
-# kube-state-metrics configuration
+# kube-state-metrics 配置
 kube-state-metrics:
   metricLabelsAllowlist:
     - pods=[*]
@@ -153,13 +174,13 @@ kube-state-metrics:
         - action: labeldrop
           regex: (pod|endpoint|namespace|service)
 
-# node-exporter configuration
+# node-exporter 配置
 node-exporter:
   prometheus:
     monitor:
       enabled: true
 
-# Alertmanager Ingress (optional)
+# Alertmanager Ingress（可选，通过 Ingress 暴露）
 alertmanager:
   ingress:
     enabled: false
@@ -172,7 +193,7 @@ alertmanager:
         hosts:
           - alertmanager.happylanding.example.com
 
-# Grafana Ingress (optional)
+# Grafana Ingress（可选）
 grafana:
   ingress:
     enabled: false

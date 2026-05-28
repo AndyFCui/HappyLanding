@@ -1,12 +1,25 @@
+# ============================================
 # HappyLanding App Helm Values
+# ============================================
+# 用途：应用配置（镜像、副本、资源限制、环境变量）
+# 修改此处即可调整部署配置，无需改 templates/
+# ============================================
 
+# 全局公共值
+nameOverride: ""
+fullnameOverride: ""
+
+# 副本数（建议 >= 2 保证高可用）
 replicaCount: 2
 
+# 镜像配置（构建后替换实际地址）
 image:
+  # 构建后替换：<AWS_ACCOUNT>.dkr.ecr.<REGION>.amazonaws.com/happylanding-frontend:latest
   frontend: <ECR_REGISTRY>/happylanding-frontend:latest
   backend: <ECR_REGISTRY>/happylanding-backend:latest
   pullPolicy: IfNotPresent
 
+# Service 配置
 service:
   type: ClusterIP
   frontend:
@@ -14,11 +27,14 @@ service:
   backend:
     port: 8080
 
+# Ingress 配置（需要 Ingress Controller + cert-manager）
 ingress:
   enabled: true
   className: nginx
   annotations:
+    # cert-manager 自动申请 TLS 证书
     cert-manager.io/cluster-issuer: letsencrypt-prod
+    # Nginx 路径重写
     nginx.ingress.kubernetes.io/rewrite-target: /
   hosts:
     frontend:
@@ -31,7 +47,15 @@ ingress:
       paths:
         - path: /
           pathType: Prefix
+  tls:
+    - hosts:
+        - happylanding.example.com
+      secretName: happylanding-frontend-tls
+    - hosts:
+        - api.happylanding.example.com
+      secretName: happylanding-backend-tls
 
+# 资源配置
 resources:
   frontend:
     limits:
@@ -48,28 +72,35 @@ resources:
       cpu: 200m
       memory: 256Mi
 
+# 水平扩缩容（HPA，可选）
 autoscaling:
   enabled: false
   minReplicas: 2
   maxReplicas: 6
   targetCPUUtilizationPercentage: 70
 
-nodeSelector: {}
+# 探针配置
+livenessProbe:
+  initialDelaySeconds: 30
+  periodSeconds: 10
+readinessProbe:
+  initialDelaySeconds: 5
+  periodSeconds: 5
 
-tolerations: []
-
-affinity: {}
-
+# 环境变量（从 ConfigMap/Secret 引用）
 env:
   backend:
     - name: ENVIRONMENT
       value: production
     - name: LOG_LEVEL
       value: info
+    # OpenSearch 连接
     - name: OPENSEARCH_URL
       value: https://search.happylanding.example.com
+    # Neptune 图数据库
     - name: NEPTUNE_ENDPOINT
-      value: neptune.happylanding.example.com
+      value: wss://neptune.happylanding.example.com:8182/gremlin
+    # AWS Bedrock
     - name: BEDROCK_REGION
       value: us-east-1
   frontend:
