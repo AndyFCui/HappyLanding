@@ -15,6 +15,7 @@ const pageTitles = {
   '/graph': '知识图谱',
   '/documents': '文档',
   '/services': '服务状态',
+  '/monitoring': '监控',
   '/about': '关于',
   '/design-system': '设计系统',
 }

@@ -19,6 +19,7 @@ const menuItems = [
 
 const bottomItems = [
   { path: '/services', label: '服务状态', icon: Activity },
+  { path: '/monitoring', label: '监控', icon: Activity },
   { path: '/about', label: '关于', icon: Info },
 ]
 

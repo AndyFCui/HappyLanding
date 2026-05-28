@@ -9,6 +9,7 @@ import Graph from './pages/Graph'
 import Documents from './pages/Documents'
 import Services from './pages/Services'
 import DesignSystem from './pages/DesignSystem'
+import Monitoring from './pages/Monitoring'
 
 function App() {
   return (
@@ -23,6 +24,7 @@ function App() {
           <Route path="/documents" element={<Documents />} />
           <Route path="/services" element={<Services />} />
           <Route path="/design-system" element={<DesignSystem />} />
+          <Route path="/monitoring" element={<Monitoring />} />
         </Routes>
       </AppLayout>
     </BrowserRouter>
