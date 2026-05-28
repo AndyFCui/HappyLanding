@@ -1,0 +1,77 @@
+# HappyLanding App Helm Values
+
+replicaCount: 2
+
+image:
+  frontend: <ECR_REGISTRY>/happylanding-frontend:latest
+  backend: <ECR_REGISTRY>/happylanding-backend:latest
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  frontend:
+    port: 3000
+  backend:
+    port: 8080
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/rewrite-target: /
+  hosts:
+    frontend:
+      host: happylanding.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+    backend:
+      host: api.happylanding.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+
+resources:
+  frontend:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  backend:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 200m
+      memory: 256Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 70
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+env:
+  backend:
+    - name: ENVIRONMENT
+      value: production
+    - name: LOG_LEVEL
+      value: info
+    - name: OPENSEARCH_URL
+      value: https://search.happylanding.example.com
+    - name: NEPTUNE_ENDPOINT
+      value: neptune.happylanding.example.com
+    - name: BEDROCK_REGION
+      value: us-east-1
+  frontend:
+    - name: VITE_API_BASE_URL
+      value: https://api.happylanding.example.com

@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "happylanding.fullname" . }}-frontend
+  labels:
+    {{- include "happylanding.labels" . | nindent 4 }}
+    app: frontend
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.frontend.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "happylanding.selectorLabels" . | nindent 4 }}
+    app: frontend
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "happylanding.fullname" . }}-backend
+  labels:
+    {{- include "happylanding.labels" . | nindent 4 }}
+    app: backend
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.backend.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "happylanding.selectorLabels" . | nindent 4 }}
+    app: backend

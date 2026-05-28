@@ -1,0 +1,57 @@
+{{- if .Values.ingress.enabled -}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "happylanding.fullname" . }}-frontend
+  labels:
+    {{- include "happylanding.labels" . | nindent 4 }}
+  annotations:
+    {{- toYaml .Values.ingress.annotations | nindent 4 }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.hosts.frontend.host }}
+      secretName: happylanding-frontend-tls
+  rules:
+    - host: {{ .Values.ingress.hosts.frontend.host }}
+      http:
+        paths:
+          {{- range .Values.ingress.hosts.frontend.paths }}
+          - path: {{ .path }}
+            pathType: {{ .pathType }}
+            backend:
+              service:
+                name: {{ include "happylanding.fullname" $ }}-frontend
+                port:
+                  number: {{ $.Values.service.frontend.port }}
+          {{- end }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "happylanding.fullname" . }}-backend
+  labels:
+    {{- include "happylanding.labels" . | nindent 4 }}
+  annotations:
+    {{- toYaml .Values.ingress.annotations | nindent 4 }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.hosts.backend.host }}
+      secretName: happylanding-backend-tls
+  rules:
+    - host: {{ .Values.ingress.hosts.backend.host }}
+      http:
+        paths:
+          {{- range .Values.ingress.hosts.backend.paths }}
+          - path: {{ .path }}
+            pathType: {{ .pathType }}
+            backend:
+              service:
+                name: {{ include "happylanding.fullname" $ }}-backend
+                port:
+                  number: {{ $.Values.service.backend.port }}
+          {{- end }}
+{{- end }}
