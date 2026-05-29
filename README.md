@@ -179,19 +179,6 @@ uvicorn main:app --reload --port 8080
 
 详见 `/design-system` 页面
 
-## 未来规划
-
-详见 [todo/TODO.md](todo/TODO.md)
-
-| 功能 | 优先级 |
-|------|--------|
-| 后端真实业务逻辑 | 高 |
-| 用户认证（Cognito） | 高 |
-| 数据库连接（RDS） | 高 |
-| S3 文件管理 | 中 |
-| 监控完善 | 中 |
-| LangGraph AI 工作流 | 低 |
-
 ## License
 
 Proprietary
