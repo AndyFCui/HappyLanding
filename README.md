@@ -1,191 +1,196 @@
 # HappyLanding - 企业知识管理系统
 
-一站式企业团队知识协同管理平台
-整合多渠道办公资源、云端文件、业务文档、行业资料与个人经验沉淀，搭建统一信息中枢。
-内置全域智能检索、可视化知识图谱、标准化团队入职指引、项目全流程交接台账等能力，
-助力团队完成知识系统化沉淀、信息快速检索、人员快速融入、项目资料高效对接，全面提升团队协作与业务流转效率。
+一站式企业团队知识协同管理平台。整合多渠道办公资源、云端文件、业务文档、行业资料与个人经验沉淀，搭建统一信息中枢。
 
-## 系统架构
+## 功能概览
 
-基于 AWS 的微服务架构，支持 Docker 一键私有化部署和 Kubernetes 管理。
+| 功能 | 说明 |
+|------|------|
+| 统一搜索 | 全文 + 向量混合搜索（待接入 OpenSearch） |
+| 知识图谱 | 实体关系可视化（待接入 Neptune） |
+| AI 对话 | 企业知识问答（待接入 Bedrock Claude） |
+| 文档管理 | 多格式文档解析与存储（待接入 S3） |
+| 入职指引 | 新员工知识库引导 |
+| 项目交接 | 项目资料全流程管理 |
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         客户端层                                  │
-│              Web (React SPA) / 移动端 / SDK                       │
-└────────────────────────────┬────────────────────────────────────┘
-                             │
-┌────────────────────────────▼────────────────────────────────────┐
-│                        接入层 (ALB + WAF)                         │
-│                   API Gateway / CloudFront                       │
-└────────────────────────────┬────────────────────────────────────┘
-                             │
-┌────────────────────────────▼────────────────────────────────────┐
-│                      应用服务层 (ECS Fargate)                      │
-│  auth  │ search │ graph │ document │ chat │ report │ onboarding  │
-└────────────────────────────┬────────────────────────────────────┘
-                             │
-┌────────────────────────────▼────────────────────────────────────┐
-│                    数据层 / AI/ML 层                              │
-│   OpenSearch  │  Neptune  │  RDS  │  S3  │  DynamoDB  │  Redis   │
-│   Bedrock (Claude/Titan)  │  Comprehend  │  Kendra               │
-└─────────────────────────────────────────────────────────────────┘
-```
+## 技术栈
 
-## 核心功能
+| 层级 | 技术 |
+|------|------|
+| 前端 | React 18 + Vite + Tailwind CSS v4 + shadcn/ui |
+| 后端 | FastAPI (Python 3.11) |
+| 部署 | AWS ECS Fargate / EKS Kubernetes |
+| 搜索 | Amazon OpenSearch（待接入） |
+| 图数据库 | Amazon Neptune（待接入） |
+| AI | AWS Bedrock Claude 3（待接入） |
+| 存储 | Amazon S3（待接入） |
+| 认证 | AWS Cognito（待接入） |
+| 数据库 | RDS PostgreSQL（待接入） |
+| 监控 | Prometheus + Grafana + Alertmanager（EKS 模式） |
 
-| 功能 | 说明 | 技术栈 |
-|------|------|--------|
-| 统一搜索 | 全文 + 向量混合搜索 | OpenSearch, Titan Embedding |
-| 知识图谱 | 实体关系可视化与图遍历 | Neptune, Gremlin |
-| AI 对话 | RAG 增强的企业知识问答 | Bedrock Claude, Knowledge Bases |
-| 报告生成 | LLM 驱动的智能报告 | Bedrock Claude |
-| 入职引导 | 新员工关键词探索与学习路径 | Bedrock Claude, OpenSearch |
-| 数据源接入 | 钉钉/SharePoint/Confluence 同步 | EventBridge, Lambda |
+## 当前状态
+
+> **开发中**：后端当前为 Mock 实现，所有 API 返回模拟数据。真实业务逻辑待接入 AWS 服务。
 
 ## 目录结构
 
 ```
 HappyLanding/
-├── services/                    # 8 个微服务
-│   ├── auth-service/            # 认证服务 (Cognito JWT)
-│   ├── search-service/          # 搜索服务 (OpenSearch Hybrid Search)
-│   ├── graph-service/           # 图谱服务 (Neptune Gremlin)
-│   ├── document-service/       # 文档服务 (S3 + Step Functions)
-│   ├── chat-service/            # 对话服务 (Bedrock Claude + DynamoDB)
-│   ├── report-service/          # 报告生成 (Bedrock + S3)
-│   ├── onboarding-service/     # 入职引导 (Bedrock + OpenSearch)
-│   └── datasource-service/      # 数据源管理 (EventBridge + Lambda)
+├── frontend/                    # React 前端
+│   ├── src/
+│   │   ├── components/         # UI 组件（shadcn/ui + 微拟物设计）
+│   │   │   ├── layout/         # AppLayout, Sidebar
+│   │   │   ├── landing/        # 落地页组件
+│   │   │   └── ui/             # Button, Card, Input, Badge
+│   │   ├── pages/              # 页面
+│   │   │   ├── Dashboard/      # 控制台
+│   │   │   ├── Search/         # 搜索页
+│   │   │   ├── Chat/           # AI 对话页
+│   │   │   ├── Graph/          # 知识图谱
+│   │   │   ├── Documents/      # 文档管理
+│   │   │   ├── Services/       # 服务状态
+│   │   │   ├── Monitoring/     # 监控入口
+│   │   │   ├── DesignSystem/   # 设计系统
+│   │   │   └── About/          # 关于
+│   │   └── lib/                # 工具函数
+│   └── index.html
 │
-├── libs/                        # 共享库
-│   ├── shared/                  # TypeScript 共享工具 (@km/shared)
-│   └── connector-sdk/           # Python 连接器 SDK
+├── backend/
+│   └── fastapi/                # FastAPI 后端
+│       ├── main.py            # API 路由（Mock 数据）
+│       ├── requirements.txt
+│       └── *_service/          # 8 个 Service 目录（待实现）
 │
-├── infrastructure/              # 基础设施代码
-│   ├── terraform/               # Terraform 模板 (VPC/RDS/OS/Redis)
-│   └── cdk/                     # CloudFormation 模板
+├── infrastructure/             # IaC 基础设施
+│   ├── terraform/              # AWS 基础设施代码
+│   │   ├── main.tf            # ECS / EKS 资源配置
+│   │   ├── variables.tf        # 可配置变量
+│   │   └── outputs.tf         # 输出（kubectl 命令等）
+│   ├── helm/                  # Helm Chart
+│   │   ├── app/               # 应用部署
+│   │   └── prometheus/        # 监控配置
+│   └── kubectl/               # K8s 资源（EKS 模式专用）
+│       ├── ingress-nginx.yaml
+│       └── cert-manager.yaml
 │
-├── deployments/                 # 部署配置
-│   ├── k8s/                     # Kubernetes YAML
-│   └── helm/                    # Helm Chart
+├── docs/                      # 用户文档
+│   ├── ARCHITECTURE.md        # 系统架构
+│   ├── DEPLOY.md              # 部署指南
+│   └── FEATURES.md            # 功能说明
 │
-└── scripts/                     # 运维脚本
+├── libs/                       # 共享库
+│   └── connector-sdk/          # Python 连接器 SDK
+│
+└── scripts/                    # 运维脚本
 ```
+
+## 部署模式
+
+| 模式 | 说明 | 适用场景 |
+|------|------|---------|
+| **ECS Fargate** | 简单部署，无需管理集群 | 内部工具、小规模、演示 |
+| **EKS Kubernetes** | 完整编排，需要 K8s 管理 | 生产环境、需要 HPA/自动扩缩容 |
+
+### ECS 模式（简单部署）
+
+```bash
+cd infrastructure/terraform
+echo 'deployment_mode = "ecs"' > terraform.tfvars
+terraform init && terraform apply
+
+# 构建并推送镜像
+docker build -t <account>.dkr.ecr.us-east-1.amazonaws.com/happylanding-frontend:latest ./frontend
+docker push <account>.dkr.ecr.us-east-1.amazonaws.com/happylanding-frontend:latest
+
+docker build -t <account>.dkr.ecr.us-east-1.amazonaws.com/happylanding-backend:latest ./backend/fastapi
+docker push <account>.dkr.ecr.us-east-1.amazonaws.com/happylanding-backend:latest
+
+# 访问 http://<alb-dns-name>
+```
+
+### EKS 模式（完整 K8s）
+
+```bash
+cd infrastructure/terraform
+echo 'deployment_mode = "eks"' > terraform.tfvars
+terraform init && terraform apply
+
+# 配置 kubectl
+aws eks update-kubeconfig --region us-east-1 --name happylanding-cluster
+
+# 安装 Ingress + cert-manager
+kubectl apply -f infrastructure/kubectl/ingress-nginx.yaml
+helm install cert-manager jetstack/cert-manager --namespace cert-manager --create-namespace --set installCRDs=true
+kubectl apply -f infrastructure/kubectl/cert-manager.yaml
+
+# 部署应用
+helm install happylanding ./infrastructure/helm/app -n happylanding --create-namespace
+
+# 部署监控
+helm install prometheus prometheus-community/kube-prometheus-stack -n monitoring --create-namespace -f ./infrastructure/helm/prometheus/values.yaml
+```
+
+详见 [docs/DEPLOY.md](docs/DEPLOY.md)
 
 ## 快速开始
 
-### 1. 本地开发
+### 前端开发
 
 ```bash
-# 启动本地依赖 (Redis, OpenSearch, LocalStack)
-docker-compose up -d
-
-# 安装服务依赖
-./scripts/local-setup.sh
-
-# 运行单个服务
-cd services/auth-service && npm run dev
-```
-
-### 2. 构建 Docker 镜像
-
-```bash
-./scripts/build-and-push.sh
-```
-
-### 3. 部署到 Kubernetes
-
-```bash
-# 配置 kubectl
-aws eks update-kubeconfig --region ap-northeast-1 --name km-cluster
-
-# 部署所有服务
-./scripts/deploy-k8s.sh
-
-# 检查状态
-./scripts/check-status.sh
-```
-
-### 4. 使用 Helm 部署
-
-```bash
-helm install km-system ./deployments/helm \
-  --namespace km-system \
-  --create-namespace \
-  --values ./deployments/helm/values.yaml
-```
-
-## API 端点
-
-| 服务 | 端点 | 功能 |
-|------|------|------|
-| auth-service | `/v1/auth` | 登录/注册/JWT 验证 |
-| search-service | `/v1/search` | 全文/向量混合搜索 |
-| graph-service | `/v1/graph` | 知识图谱 CRUD、关系查询 |
-| document-service | `/v1/documents` | 文档上传/下载/管理 |
-| chat-service | `/v1/chat` | AI 对话、RAG 问答 |
-| report-service | `/v1/reports` | 报告生成、导出 |
-| onboarding-service | `/v1/onboarding` | 新员工引导、关键词探索 |
-| datasource-service | `/v1/datasources` | 数据源连接器管理 |
-
-## 环境变量
-
-| 变量 | 说明 | 示例 |
-|------|------|------|
-| `AWS_REGION` | AWS 区域 | `ap-northeast-1` |
-| `OPENSEARCH_ENDPOINT` | OpenSearch 端点 | `https://...` |
-| `NEPTUNE_ENDPOINT` | Neptune 端点 | `wss://...` |
-| `REDIS_HOST` | Redis 主机 | `redis.km-data.svc` |
-| `S3_BUCKET` | 文档存储桶 | `km-documents` |
-| `COGNITO_USER_POOL_ID` | Cognito 用户池 ID | `ap-northeast-1_xxx` |
-| `COGNITO_CLIENT_ID` | Cognito 客户端 ID | `xxx` |
-
-## Kubernetes 资源
-
-- **Namespace**: `km-system`, `km-apps`, `km-data`
-- **Deployment**: 每个服务 2+ 副本，跨 AZ 部署
-- **Service**: ClusterIP 类型
-- **HPA**: 基于 CPU/内存的自动伸缩
-- **PDB**: 滚动更新保护 (minAvailable: 1)
-- **Ingress**: Nginx Ingress + TLS (可选)
-- **ConfigMap**: `km-config` 共享配置
-- **Secret**: `aws-secrets` AWS 凭据
-- **CronJob**: 数据备份、Sessions 清理、数据源同步
-
-## 数据存储
-
-| 存储 | 用途 | 规格 |
-|------|------|------|
-| OpenSearch | 全文 + 向量搜索 | 3 数据节点 + 3 主节点, UltraWarm |
-| Neptune | 知识图谱 | db.r6g.large Multi-AZ |
-| RDS PostgreSQL | 结构化数据 | db.r6g.large Multi-AZ + 只读副本 |
-| DynamoDB | 会话/时间线 | On-Demand 模式 |
-| Redis | 缓存 | cache.r6g.large Cluster 模式 |
-| S3 | 文档存储 | 标准 + 生命周期策略 |
-
-## 成本估算 (AWS 亚太区域)
-
-| 规模 | 用户 | 文档 | 月成本 (USD) |
-|------|------|------|-------------|
-| 小规模 | 10 | 10K | ~$600 |
-| 中规模 | 100 | 100K | ~$4,000 |
-| 大规模 | 500+ | 1M | ~$18,000 |
-
-## 开发
-
-```bash
-# 安装依赖
-cd services/auth-service && npm install
-
-# 运行测试
-npm test
-
-# 代码检查
-npm run lint
-
-# 本地运行
+cd frontend
+npm install
 npm run dev
+# 访问 http://localhost:3000
 ```
+
+### 后端开发
+
+```bash
+cd backend/fastapi
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn main:app --reload --port 8080
+# 访问 http://localhost:8080
+```
+
+## 页面导航
+
+| 路径 | 页面 | 说明 |
+|------|------|------|
+| `/` | 控制台 | 系统信息 + 服务入口 |
+| `/search` | 搜索服务 | Mock 数据 |
+| `/chat` | AI 对话 | Mock 数据 |
+| `/graph` | 知识图谱 | Mock 数据 |
+| `/documents` | 文档管理 | Mock 数据 |
+| `/services` | 服务状态 | Mock 数据 |
+| `/monitoring` | 监控面板 | Grafana/Alertmanager 入口 |
+| `/design-system` | 设计系统 | UI 组件展示 |
+| `/about` | 关于 | 项目介绍 |
+
+## 设计系统
+
+微拟物光影质感（Micro-fakery）：
+
+- **Button**：raised / glass 变体，8 种状态
+- **Card**：raised / inset / flat 变体，hover 发光
+- **Input**：inset / flat 变体，focus 阴影
+- **Badge**：gradient 渐变背景
+
+详见 `/design-system` 页面
+
+## 未来规划
+
+详见 [todo/TODO.md](todo/TODO.md)
+
+| 功能 | 优先级 |
+|------|--------|
+| 后端真实业务逻辑 | 高 |
+| 用户认证（Cognito） | 高 |
+| 数据库连接（RDS） | 高 |
+| S3 文件管理 | 中 |
+| 监控完善 | 中 |
+| LangGraph AI 工作流 | 低 |
 
 ## License
 
