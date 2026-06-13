@@ -4,33 +4,61 @@
 
 ## 功能概览
 
-| 功能 | 说明 |
-|------|------|
-| 统一搜索 | 全文 + 向量混合搜索（待接入 OpenSearch） |
-| 知识图谱 | 实体关系可视化（待接入 Neptune） |
-| AI 对话 | 企业知识问答（待接入 Bedrock Claude） |
-| 文档管理 | 多格式文档解析与存储（待接入 S3） |
-| 入职指引 | 新员工知识库引导 |
-| 项目交接 | 项目资料全流程管理 |
+| 功能 | 说明 | 状态 |
+|------|------|------|
+| 统一搜索 | 全文 + 向量混合搜索（Hybrid Search） | 规划中 |
+| 知识图谱 | 实体关系可视化（待接入 Neptune） | 规划中 |
+| AI 对话 | 企业知识问答（RAG + Bedrock Claude） | 规划中 |
+| 文档管理 | 多格式文档解析与存储（S3 + Textract） | 规划中 |
+| 入职指引 | 新员工知识库引导 | 规划中 |
+| 项目交接 | 项目资料全流程管理 | 规划中 |
+
+### RAG 架构（规划中）
+
+```
+文档上传 → S3 → Lambda 解析 → Textract → 分块 → Titan Embedding → OpenSearch
+                                                        ↓
+用户问题 → Titan Embedding → Hybrid Search (kNN + BM25) → Rerank → Bedrock Claude → 回答
+```
+
+**技术选型：**
+- AI 框架：Pydantic AI（结构化输出）
+- LLM：boto3 Bedrock 直连
+- Embedding：boto3 Titan Embeddings 直连
+- 向量存储：opensearch-py 直连
+- 文档解析：boto3 + Textract 直连
+
+> 不使用 LangChain/LangGraph — 依赖过重，调试困难，直接调用 boto3 更轻量稳定。
 
 ## 技术栈
 
-| 层级 | 技术 |
-|------|------|
-| 前端 | React 18 + Vite + Tailwind CSS v4 + shadcn/ui |
-| 后端 | FastAPI (Python 3.11) |
-| 部署 | AWS ECS Fargate / EKS Kubernetes |
-| 搜索 | Amazon OpenSearch（待接入） |
-| 图数据库 | Amazon Neptune（待接入） |
-| AI | AWS Bedrock Claude 3（待接入） |
-| 存储 | Amazon S3（待接入） |
-| 认证 | AWS Cognito（待接入） |
-| 数据库 | RDS PostgreSQL（待接入） |
-| 监控 | Prometheus + Grafana + Alertmanager（EKS 模式） |
+| 层级 | 技术 | 说明 |
+|------|------|------|
+| 前端 | React 18 + Vite + Tailwind CSS v4 + shadcn/ui | 微拟物设计 |
+| 后端 | FastAPI (Python 3.11) + Pydantic AI | 结构化 AI 输出 |
+| 部署 | AWS ECS Fargate / EKS Kubernetes | 双模式支持 |
+| 搜索 | Amazon OpenSearch + Hybrid Search | kNN + BM25 混合检索 |
+| 图数据库 | Amazon Neptune（规划中） | Gremlin 查询 |
+| AI | AWS Bedrock Claude 3 + Titan Embeddings | boto3 直连 |
+| 存储 | Amazon S3 + AWS Textract | 文档解析 |
+| 认证 | AWS Cognito（规划中） | JWT |
+| 数据库 | RDS PostgreSQL | 会话 + 反馈存储 |
+| 监控 | Prometheus + Grafana + Alertmanager（EKS 模式） | |
 
 ## 当前状态
 
-> **开发中**：后端当前为 Mock 实现，所有 API 返回模拟数据。真实业务逻辑待接入 AWS 服务。
+> **开发中**：后端当前为 Mock 实现，前端已完整。
+> **下一步**：RAG POC — 企业知识问答（Document → Search → Chat 链路）
+
+### RAG POC 实施计划
+
+| 阶段 | 内容 |
+|------|------|
+| P0 | 文档解析 Lambda（S3 → Textract → 纯文本） |
+| P1 | Embedding pipeline（分块 → Titan → OpenSearch） |
+| P2 | Hybrid Search + Rerank |
+| P3 | Bedrock Claude 生成（端到端对话） |
+| P4 | 反馈收集（评分/点赞数据） |
 
 ## 目录结构
 
@@ -59,7 +87,7 @@ HappyLanding/
 │   └── fastapi/                # FastAPI 后端
 │       ├── main.py            # API 路由（Mock 数据）
 │       ├── requirements.txt
-│       └── *_service/          # 8 个 Service 目录（待实现）
+│       └── *_service/          # 8 个 Service 目录（规划中）
 │
 ├── infrastructure/             # IaC 基础设施
 │   ├── terraform/              # AWS 基础设施代码
@@ -159,10 +187,10 @@ uvicorn main:app --reload --port 8080
 | 路径 | 页面 | 说明 |
 |------|------|------|
 | `/` | 控制台 | 系统信息 + 服务入口 |
-| `/search` | 搜索服务 | Mock 数据 |
-| `/chat` | AI 对话 | Mock 数据 |
-| `/graph` | 知识图谱 | Mock 数据 |
-| `/documents` | 文档管理 | Mock 数据 |
+| `/search` | 搜索服务 | UI 完成，RAG 规划中 |
+| `/chat` | AI 对话 | UI 完成，RAG 规划中 |
+| `/graph` | 知识图谱 | UI 完成，Neptune 规划中 |
+| `/documents` | 文档管理 | UI 完成，S3 + Textract 规划中 |
 | `/services` | 服务状态 | Mock 数据 |
 | `/monitoring` | 监控面板 | Grafana/Alertmanager 入口 |
 | `/design-system` | 设计系统 | UI 组件展示 |
