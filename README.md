@@ -15,20 +15,27 @@
 
 ### RAG 架构（规划中）
 
+![RAG Architecture](docs/architecture.png)
+
+**数据流：**
 ```
 文档上传 → S3 → Lambda 解析 → Textract → 分块 → Titan Embedding → OpenSearch
                                                         ↓
 用户问题 → Titan Embedding → Hybrid Search (kNN + BM25) → Rerank → Bedrock Claude → 回答
 ```
 
-**技术选型：**
+**POC 阶段技术选型：**
 - AI 框架：Pydantic AI（结构化输出）
 - LLM：boto3 Bedrock 直连
 - Embedding：boto3 Titan Embeddings 直连
 - 向量存储：opensearch-py 直连
 - 文档解析：boto3 + Textract 直连
 
-> 不使用 LangChain/LangGraph — 依赖过重，调试困难，直接调用 boto3 更轻量稳定。
+**未来演进（按需引入）：**
+- Temporal：文档处理流程变复杂、有人工审批、补偿事务需求
+- LangGraph：引入 multi-agent 协作、复杂推理分支
+
+> 不使用 LangChain/LangGraph（POC 阶段）— 依赖过重，调试困难，直接调用 boto3 更轻量稳定。
 
 ## 技术栈
 
