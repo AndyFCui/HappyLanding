@@ -69,6 +69,8 @@
 
 ## 目录结构
 
+![Directory Structure](docs/directory-structure.png)
+
 ```
 HappyLanding/
 ├── frontend/                    # React 前端
@@ -108,15 +110,20 @@ HappyLanding/
 │       ├── ingress-nginx.yaml
 │       └── cert-manager.yaml
 │
+├── deployments/               # K8s/Helm 部署配置
+│   ├── k8s/                   # 原生 K8s YAML
+│   └── helm/                  # Helm Chart
+│
 ├── docs/                      # 用户文档
 │   ├── ARCHITECTURE.md        # 系统架构
 │   ├── DEPLOY.md              # 部署指南
 │   └── FEATURES.md            # 功能说明
 │
-├── libs/                       # 共享库
+├── libs/                      # 共享库
 │   └── connector-sdk/          # Python 连接器 SDK
 │
-└── scripts/                    # 运维脚本
+├── scripts/                    # 运维脚本
+└── todo/                       # 开发待办
 ```
 
 ## 部署模式

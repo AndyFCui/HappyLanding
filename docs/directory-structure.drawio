@@ -1,0 +1,297 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="drawio" version="26.0.0">
+  <diagram name="HappyLanding Directory Structure">
+    <mxGraphModel>
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Title -->
+        <mxCell id="title" value="HappyLanding - Directory Structure" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=22;fontStyle=bold;fontColor=#1a1a1a;" vertex="1" parent="1">
+          <mxGeometry x="280" y="10" width="400" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- ========== ROOT ========== -->
+        <mxCell id="root" value="HappyLanding/" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a1a;strokeColor=#1a1a1a;fontColor=#ffffff;fontSize=14;fontStyle=bold;align=center;" vertex="1" parent="1">
+          <mxGeometry x="20" y="60" width="160" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- ========== FRONTEND ========== -->
+        <mxCell id="fe_box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="220" y="60" width="280" height="320" as="geometry" />
+        </mxCell>
+
+        <mxCell id="fe_label" value="frontend/" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=12;fontStyle=bold;fontColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="230" y="65" width="100" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="fe_src" value="src/" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=11;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="240" y="95" width="60" height="18" as="geometry" />
+        </mxCell>
+
+        <mxCell id="fe_components" value="components/&#xa;├── layout/      (AppLayout, Sidebar)&#xa;├── landing/     (落地页)&#xa;└── ui/          (Button, Card, Input)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;strokeWidth=1.5;align=left;fontSize=10;fontColor=#333333;spacing=5;" vertex="1" parent="1">
+          <mxGeometry x="240" y="118" width="240" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="fe_pages" value="pages/" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=11;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="240" y="188" width="60" height="18" as="geometry" />
+        </mxCell>
+
+        <mxCell id="fe_pages_box" value="Dashboard/   Search/   Chat/&#xa;Graph/       Documents/   Services/&#xa;Monitoring/  DesignSystem/   About/" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;strokeWidth=1.5;align=center;fontSize=10;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="240" y="210" width="240" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="fe_lib" value="lib/   (工具函数)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;strokeWidth=1.5;align=center;fontSize=10;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="240" y="270" width="240" height="25" as="geometry" />
+        </mxCell>
+
+        <mxCell id="fe_index" value="index.html" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=10;fontColor=#666666;fontStyle=italic;" vertex="1" parent="1">
+          <mxGeometry x="240" y="305" width="80" height="18" as="geometry" />
+        </mxCell>
+
+        <!-- ========== BACKEND ========== -->
+        <mxCell id="be_box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="220" y="395" width="280" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="be_label" value="backend/fastapi/" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=12;fontStyle=bold;fontColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="230" y="400" width="140" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="be_main" value="main.py   (API 路由)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;strokeWidth=1.5;align=center;fontSize=10;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="240" y="425" width="120" height="25" as="geometry" />
+        </mxCell>
+
+        <mxCell id="be_req" value="requirements.txt" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;strokeWidth=1.5;align=center;fontSize=10;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="240" y="460" width="120" height="25" as="geometry" />
+        </mxCell>
+
+        <mxCell id="be_services" value="*_service/   (8个Service目录)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;strokeWidth=1.5;align=center;fontSize=10;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="240" y="495" width="240" height="25" as="geometry" />
+        </mxCell>
+
+        <!-- ========== INFRASTRUCTURE ========== -->
+        <mxCell id="inf_box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="520" y="60" width="300" height="320" as="geometry" />
+        </mxCell>
+
+        <mxCell id="inf_label" value="infrastructure/" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=12;fontStyle=bold;fontColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="530" y="65" width="140" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="inf_terraform" value="terraform/" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=11;fontColor=#333333;fontStyle=bold;" vertex="1" parent="1">
+          <mxGeometry x="540" y="95" width="90" height="18" as="geometry" />
+        </mxCell>
+
+        <mxCell id="inf_tf_box" value="main.tf&#xa;variables.tf&#xa;outputs.tf" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;strokeWidth=1.5;align=center;fontSize=10;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="540" y="118" width="100" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="inf_helm" value="helm/" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=11;fontColor=#333333;fontStyle=bold;" vertex="1" parent="1">
+          <mxGeometry x="540" y="180" width="90" height="18" as="geometry" />
+        </mxCell>
+
+        <mxCell id="inf_helm_box" value="app/&#xa;prometheus/" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;strokeWidth=1.5;align=center;fontSize=10;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="540" y="203" width="100" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="inf_kubectl" value="kubectl/" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=11;fontColor=#333333;fontStyle=bold;" vertex="1" parent="1">
+          <mxGeometry x="540" y="255" width="90" height="18" as="geometry" />
+        </mxCell>
+
+        <mxCell id="inf_kubectl_box" value="ingress-nginx.yaml&#xa;cert-manager.yaml" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;strokeWidth=1.5;align=center;fontSize=10;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="540" y="278" width="140" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="inf_desc" value="IaC 基础设施" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=9;fontColor=#666666;fontStyle=italic;" vertex="1" parent="1">
+          <mxGeometry x="540" y="328" width="100" height="18" as="geometry" />
+        </mxCell>
+
+        <!-- ========== DEPLOYMENTS ========== -->
+        <mxCell id="dep_box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="520" y="395" width="300" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dep_label" value="deployments/" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=12;fontStyle=bold;fontColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="530" y="400" width="120" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dep_k8s" value="k8s/" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=11;fontColor=#333333;fontStyle=bold;" vertex="1" parent="1">
+          <mxGeometry x="540" y="430" width="50" height="18" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dep_k8s_box" value="*_deployment.yaml&#xa;*_service.yaml&#xa;configmaps.yaml   hpa.yaml&#xa;ingress.yaml   pdb.yaml" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9673a6;strokeWidth=1.5;align=center;fontSize=9;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="540" y="453" width="140" height="55" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dep_helm" value="helm/" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=11;fontColor=#333333;fontStyle=bold;" vertex="1" parent="1">
+          <mxGeometry x="700" y="430" width="50" height="18" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dep_helm_box" value="Chart.yaml&#xa;values.yaml&#xa;templates/" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9673a6;strokeWidth=1.5;align=center;fontSize=9;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="700" y="453" width="100" height="55" as="geometry" />
+        </mxCell>
+
+        <!-- ========== DOCS ========== -->
+        <mxCell id="docs_box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="40" y="120" width="160" height="130" as="geometry" />
+        </mxCell>
+
+        <mxCell id="docs_label" value="docs/" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=12;fontStyle=bold;fontColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="50" y="125" width="60" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="docs_arch" value="ARCHITECTURE.md" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;strokeWidth=1.5;align=center;fontSize=10;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="50" y="155" width="140" height="22" as="geometry" />
+        </mxCell>
+
+        <mxCell id="docs_deploy" value="DEPLOY.md" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;strokeWidth=1.5;align=center;fontSize=10;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="50" y="183" width="140" height="22" as="geometry" />
+        </mxCell>
+
+        <mxCell id="docs_features" value="FEATURES.md" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;strokeWidth=1.5;align=center;fontSize=10;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="50" y="211" width="140" height="22" as="geometry" />
+        </mxCell>
+
+        <!-- ========== LIBS ========== -->
+        <mxCell id="libs_box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="40" y="265" width="160" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="libs_label" value="libs/" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=12;fontStyle=bold;fontColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="50" y="270" width="60" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="libs_sdk" value="connector-sdk/" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;strokeWidth=1.5;align=center;fontSize=10;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="50" y="298" width="140" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- ========== SCRIPTS ========== -->
+        <mxCell id="scripts_box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="40" y="350" width="160" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="scripts_label" value="scripts/" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=12;fontStyle=bold;fontColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="50" y="355" width="70" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="scripts_items" value="运维脚本" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;strokeWidth=1.5;align=center;fontSize=10;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="50" y="380" width="140" height="25" as="geometry" />
+        </mxCell>
+
+        <!-- ========== TODO ========== -->
+        <mxCell id="todo_box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="40" y="425" width="160" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="todo_label" value="todo/" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=12;fontStyle=bold;fontColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="50" y="430" width="60" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="todo_items" value="TODO.md" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;strokeWidth=1.5;align=center;fontSize=10;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="50" y="455" width="140" height="25" as="geometry" />
+        </mxCell>
+
+        <!-- ========== LEGEND ========== -->
+        <mxCell id="legend_box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999999;strokeWidth=1;" vertex="1" parent="1">
+          <mxGeometry x="840" y="60" width="160" height="200" as="geometry" />
+        </mxCell>
+
+        <mxCell id="leg_title" value="Legend" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=12;fontStyle=bold;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="880" y="65" width="80" height="25" as="geometry" />
+        </mxCell>
+
+        <mxCell id="leg_fe" value="前端" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=1.5;align=center;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="850" y="100" width="60" height="25" as="geometry" />
+        </mxCell>
+
+        <mxCell id="leg_be" value="后端" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=1.5;align=center;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="850" y="135" width="60" height="25" as="geometry" />
+        </mxCell>
+
+        <mxCell id="leg_inf" value="Infra" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=1.5;align=center;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="850" y="170" width="60" height="25" as="geometry" />
+        </mxCell>
+
+        <mxCell id="leg_dep" value="Deploy" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=1.5;align=center;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="920" y="100" width="60" height="25" as="geometry" />
+        </mxCell>
+
+        <mxCell id="leg_docs" value="Docs" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;strokeWidth=1.5;align=center;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="920" y="135" width="60" height="25" as="geometry" />
+        </mxCell>
+
+        <mxCell id="leg_other" value="其他" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999999;strokeWidth=1;align=center;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="920" y="170" width="60" height="25" as="geometry" />
+        </mxCell>
+
+        <!-- ========== CONNECTIONS ========== -->
+
+        <!-- Root to frontend -->
+        <mxCell id="c1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#6c8ebf;" edge="1" parent="1" source="root" target="fe_box">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="190" y="80" />
+              <mxPoint x="220" y="80" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Root to backend -->
+        <mxCell id="c2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#d6b656;" edge="1" parent="1" source="root" target="be_box">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="190" y="100" />
+              <mxPoint x="220" y="100" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Root to infra -->
+        <mxCell id="c3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#82b366;" edge="1" parent="1" source="root" target="inf_box">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="190" y="80" />
+              <mxPoint x="360" y="80" />
+              <mxPoint x="360" y="220" />
+              <mxPoint x="520" y="220" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Root to deployments -->
+        <mxCell id="c4" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#9673a6;" edge="1" parent="1" source="root" target="dep_box">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="190" y="100" />
+              <mxPoint x="360" y="100" />
+              <mxPoint x="360" y="455" />
+              <mxPoint x="520" y="455" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Root to docs -->
+        <mxCell id="c5" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#666666;" edge="1" parent="1" source="root" target="docs_box">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Root to libs -->
+        <mxCell id="c6" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#666666;" edge="1" parent="1" source="root" target="libs_box">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Root to scripts -->
+        <mxCell id="c7" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#666666;" edge="1" parent="1" source="root" target="scripts_box">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Root to todo -->
+        <mxCell id="c8" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#666666;" edge="1" parent="1" source="root" target="todo_box">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
